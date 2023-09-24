@@ -46,7 +46,7 @@ public class Example1 {
                     <t:include cssImports/>
                 </head>
                 <body>
-                    <h1>${%title}</h1>
+                    <h1>${title}</h1>
                     
                     <p>The current time is ${time}</p>
                     <p>And 2 + 2 = ${answer}</p>
@@ -74,6 +74,7 @@ public class Example1 {
                 </body>
             </html>
                 """).
+            variable("title", "My Page").
             include("cssImports", TemplateModel.ofContent("<link src=\"styles.css\"/>")).
             variable("time", Example1::formatTime).
             variable("answer", () -> 2 + 2).
