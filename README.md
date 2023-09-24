@@ -7,13 +7,17 @@
 ![JPMS](https://img.shields.io/badge/JPMS-com.sshtools.tinytemplate-purple) 
 
 
-![TinyTemplate](src/main/web/logo-no-backgroun.png)
+![TinyTemplate](src/main/web/logo-no-background.png)
 
 A lightweight Java string template engine. While it is intended to be used with HTML. it 
 will work with any text content. While small, it has some unique features and is fast and 
 flexible.
 
 It requires just 4 HTML-like tags, and a bash-like variable expression syntax.
+
+## Status
+
+Feature complete. Just some test coverage to complete and addition of Javadoc.
 
 ## Quick Start
 
