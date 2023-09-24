@@ -179,11 +179,6 @@ public class Templates {
 					}
 				} else {
 					var param = mtchr.group(2);
-					var supplier = variableSupplier.apply(param);
-					if (missingThrowsException && supplier == null)
-						throw new IllegalArgumentException(
-								MessageFormat.format("Required variable ''{0}'' is missing", param));
-					var val = supplier == null ? null : supplier.get();
 					var sep = mtchr.group(3);
 					if (sep.equals(":")) {
 						var op = mtchr.group(4);
@@ -216,7 +211,7 @@ public class Templates {
 							 * Otherwise, the value of parameter is substituted.
 							 */
 							if (conditionEvaluator.apply(param)) {
-								return expandVal(val);
+								return expandVal(supplyVal(param));
 							} else {
 								return process(word);
 							}
@@ -250,7 +245,7 @@ public class Templates {
 									input, op));
 						}
 					} else {
-						return expandVal(val);
+						return expandVal(supplyVal(param));
 					}
 				}
 			} else {
@@ -258,6 +253,15 @@ public class Templates {
 			}
 
 			return input;
+		}
+
+		private Object supplyVal(String param) {
+			var supplier = variableSupplier.apply(param);
+			if (missingThrowsException && supplier == null)
+				throw new IllegalArgumentException(
+						MessageFormat.format("Required variable ''{0}'' is missing", param));
+			var val = supplier == null ? null : supplier.get();
+			return val;
 		}
 
 		private String expandVal(Object var) {
@@ -616,6 +620,7 @@ public class Templates {
 			State state = State.START;
 			boolean match = true;
 			boolean capture = false;
+			boolean inElse = false;
 			
 			Block(TemplateModel model, VariableExpander expander, Reader reader/* , String scope */) {
 				this(model, expander, reader, null, true);
@@ -681,10 +686,12 @@ public class Templates {
 						esc = true;
 						continue;
 					}
+					
+					var process = !block.capture && ((block.match && !block.inElse) || (block.match && block.inElse));
 	
 					switch (block.state) {
 					case START:
-						if (ch == '$' && !block.capture) {
+						if (ch == '$' && process) {
 							block.state = State.VAR_START;
 							buf.append(ch);
 						} else if (ch == '<') {
@@ -743,7 +750,7 @@ public class Templates {
 						break;
 					case T_TAG_NAME:
 						if (ch == '>') {
-							if(!block.capture) {
+							if(process) {
 								var directive = buf.toString().substring(1).trim();
 								if(processDirective(block, directive)) {
 									buf.setLength(0);
@@ -799,7 +806,7 @@ public class Templates {
 						break;
 					case T_TAG_LEAF_END:
 						if (ch == '>') {
-							if(!block.capture) {
+							if(process || (block.scope.endsWith("if") && !block.inElse && !block.match)) {
 								var directive = buf.toString().substring(1, buf.length() - 1);
 								while(directive.endsWith("/"))
 									directive = directive.substring(0, directive.length() - 1);
@@ -877,6 +884,7 @@ public class Templates {
 			}
 			else if(dir.equals("t:else")) {
 				block.match = !block.match;
+				block.inElse = true;
 				block.state = State.START;
 				return true;
 			}
@@ -909,7 +917,7 @@ public class Templates {
 		}
 	
 		@SuppressWarnings("rawtypes")
-		private Optional<Boolean> conditionOrVariable(TemplateModel model, String attributeName, String content) {
+		private static Optional<Boolean> conditionOrVariable(TemplateModel model, String attributeName, String content) {
 			if (model.conditions.containsKey(attributeName)) {
 				return Optional.of(model.conditions.get(attributeName).get());
 			} else if (model.includes.containsKey(attributeName)) {

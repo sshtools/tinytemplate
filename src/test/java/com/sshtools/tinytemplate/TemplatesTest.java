@@ -287,6 +287,27 @@ public class TemplatesTest {
 	}
 	
 	@Test
+	public void testTemplateIfCheckNotProcessing() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:if aCondition>
+				<p>Show this ${missingVar}</p>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					condition("aCondition", false)));
+	}
+	
+	@Test
 	public void testTemplateIfWithElse() {
 		Assertions.assertEquals("""
 				<html>
@@ -357,26 +378,26 @@ public class TemplatesTest {
 	}
 	
 	@Test
-	public void testTemplateWithIfInList() {
+	public void testTemplateWithConditionsInList() {
 		Assertions.assertEquals("""
 				<html>
 				<body>
 				
-				<div>Row 1</div>
+				<div>Row 1 Whatever</div>
 				
 				
-				<div>Row 2</div>
+				<div>Row 2 Row2</div>
 				
 				
-				<div>Row 3</div>
+				<div>Row 3 Whatever</div>
 				
 				<p>This is row 3</p>
 				
 				
-				<div>Row 4</div>
+				<div>Row 4 Whatever</div>
 				
 				
-				<div>Row 5</div>
+				<div>Row 5 Whatever</div>
 				
 				
 				</body>
@@ -386,7 +407,7 @@ public class TemplatesTest {
 				<html>
 				<body>
 				<t:list aList>
-				<div>${row}</div>
+				<div>${row} ${thisIsRow2:?Row2:Whatever}</div>
 				<t:if thisIsRow3>
 				<p>This is row 3</p>
 				</t:if>
@@ -397,12 +418,12 @@ public class TemplatesTest {
 					list("aList", (content) -> IntStream.of(1,2,3,4,5).mapToObj(i -> {
 						return TemplateModel.ofContent(content).
 							variable("row", "Row " + i).
-							condition("thisIsRow3", i == 3);
+							condition("thisIsRow3", i == 3).
+							condition("thisIsRow2", i == 2);
 					}).toList()).
 					variable("var1", "Some Name")));
 	}
 	
-	@Test
 	public void testTemplateIfWithVariables() {
 		Assertions.assertEquals("""
 				<html>
