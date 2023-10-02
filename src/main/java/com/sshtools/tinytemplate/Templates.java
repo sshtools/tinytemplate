@@ -641,6 +641,7 @@ public class Templates {
 			boolean match = true;
 			boolean capture = false;
 			boolean inElse = false;
+			int ifDepth = 0;
 			
 			Block(TemplateModel model, VariableExpander expander, Reader reader/* , String scope */) {
 				this(model, expander, reader, null, true);
@@ -770,8 +771,11 @@ public class Templates {
 						break;
 					case T_TAG_NAME:
 						if (ch == '>') {
+							var directive = buf.toString().substring(1).trim();
+							if(directive.startsWith("t:if ")) {
+								block.ifDepth++;
+							}
 							if(process) {
-								var directive = buf.toString().substring(1).trim();
 								if(processDirective(block, directive)) {
 									buf.setLength(0);
 								}
@@ -811,12 +815,21 @@ public class Templates {
 						break;
 					case T_TAG_END:
 						if(ch == '>') {
-							var directive = buf.toString().substring(4);
-							if(directive.equals(block.scope)) {
+							var directive = buf.toString().substring(4).trim();
+							var isIf = directive.equals("if");
+							if(isIf) {
+								block.ifDepth--;
+							}
+							if(directive.equals(block.scope) && (!isIf || (isIf && block.ifDepth == 0))) {
 								logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
 								return;
 							} else {
-								flushBuf(ch, buf, block);
+								if(isIf) {
+									buf.setLength(0);
+								}
+								else {
+									flushBuf(ch, buf, block);
+								}
 								block.state = State.START;
 							}
 						}
@@ -879,6 +892,7 @@ public class Templates {
 					match = !match;
 				
 				var ifBlock = new Block(block.model, getExpanderForModel(block.model), block.model.text, "if", match);
+				ifBlock.ifDepth = 1;
 				
 				read(ifBlock);
 				
@@ -954,7 +968,7 @@ public class Templates {
 				if (var instanceof Boolean) {
 					return Optional.of((Boolean) var);
 				} else if (var instanceof String) {
-					return Optional.of("true".equalsIgnoreCase((String) var));
+					return Optional.of(!"false".equalsIgnoreCase((String) var) && !"".equals((String) var) && !"0".equals((String) var));
 				} else if (var instanceof Number) {
 					return Optional.of(((Number) var).doubleValue() > 0);
 				} else if (var != null) {

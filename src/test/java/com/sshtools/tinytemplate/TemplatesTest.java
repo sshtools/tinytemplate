@@ -307,6 +307,29 @@ public class TemplatesTest {
 	}
 	
 	@Test
+	public void testTemplateVariableAsCondition() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+				<p>Show this Some value</p>
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:if aVariable>
+				<p>Show this ${aVariable}</p>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					variable("aVariable", "Some value")));
+	}
+	
+	@Test
 	public void testTemplateIfCheckNotProcessing() {
 		Assertions.assertEquals("""
 				<html>
@@ -405,9 +428,7 @@ public class TemplatesTest {
 				
 				<div>Row 1 Whatever</div>
 				
-				
 				<div>Row 2 Row2</div>
-				
 				
 				<div>Row 3 Whatever</div>
 				
@@ -416,9 +437,7 @@ public class TemplatesTest {
 				
 				<div>Row 4 Whatever</div>
 				
-				
 				<div>Row 5 Whatever</div>
-				
 				
 				</body>
 				</html>
@@ -539,6 +558,114 @@ public class TemplatesTest {
 				</html>
 				 	 """).
 					condition("aCondition", true)));
+		
+	}
+	
+	public void testTEMPYYYY() {
+		String TODTEST = """
+			
+		<t:if ntp>
+			<div class="float-end">
+				<t:if ntpSynchronized>
+					<i title="${%ntpSynchronized}" class="icn-small text-success bi-check-circle-fill me-2 align-middle"></i>
+				<t:else/>
+					<i title="${%ntpNotSynchronized}" class="icn-small text-warning bi-exclamation-triangle-fill me-2 align-middle"></i>
+				</t:if>
+			</div>
+		</t:if>
+		""";
+		
+	}
+	
+	@Test
+	public void testTEMPXXXXXXX() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+				<p>Show this</p>
+				
+				<p>And show this too</p>
+				
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:if aCondition>
+				<p>Show this</p>
+				<t:if !bCondition>
+				<p>And show this too</p>
+				</t:if>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					condition("aCondition", true)));
+		
+	}
+	
+	@Test
+	public void testTemplateNestedIf2() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:if aCondition>
+				<p>Outside</p>
+				<t:if bCondition>
+				<p>And show this too</p>
+				</t:if>
+				<p>Outside</p>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					condition("aCondition", false).
+					condition("bCondition", true)));
+		
+	}
+	
+	@Test
+	public void testTemplateNestedIf3() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+				<p>Outside</p>
+				
+				<p>Outside</p>
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:if aCondition>
+				<p>Outside</p>
+				<t:if bCondition>
+				<p>Don't show this</p>
+				<t:if bcondition>
+				<p>Or this</p>
+				</t:if>
+				</t:if>
+				<p>Outside</p>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					condition("aCondition", true).
+					condition("bCondition", false).
+					condition("cCondition", true)));
 		
 	}
 	

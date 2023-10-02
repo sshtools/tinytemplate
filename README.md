@@ -27,7 +27,7 @@ Add the library to your project.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>tinytemplate</artifactId>
-    <version>0.9.0</version>
+    <version>0.9.1</version>
 </dependency>
 ```
 
@@ -46,11 +46,13 @@ public class Example1 {
                     <t:include cssImports/>
                 </head>
                 <body>
-                    <h1>${title}</h1>
+                    <h1>${%title}</h1>
                     
                     <p>The current time is ${time}</p>
                     <p>And 2 + 2 = ${answer}</p>
                     <p>Weather is ${weather}</p>
+                    <p>I18n Text1: ${i18n1}</p>
+                    <p>I18n Text2: ${i18n2}</p>
                     
                     <t:if am>
                         <p>Which is AM</p>
@@ -74,11 +76,13 @@ public class Example1 {
                 </body>
             </html>
                 """).
-            variable("title", "My Page").
+            bundle(Example1.class).
             include("cssImports", TemplateModel.ofContent("<link src=\"styles.css\"/>")).
             variable("time", Example1::formatTime).
             variable("answer", () -> 2 + 2).
             variable("weather", "Sunny").
+            i18n("i18n1", "key1").
+            i18n("i18n2", "key2", Math.random()).
             condition("am", () -> Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 11).
             list("menu", content -> 
                 Arrays.asList("Mon", "Tue", "Wed", "Thu", "Fri").stream().map(day -> 
@@ -95,6 +99,14 @@ public class Example1 {
     }
 }
 
+```
+
+And a corresponding resource file, `Example1.properties`.
+
+```
+title=An Example
+key1=Some Text
+key2=Some other text with an argument. Random number is {0}
 ```
 
  
