@@ -78,20 +78,21 @@ public class Example1 {
                 """).
             bundle(Example1.class).
             include("cssImports", TemplateModel.ofContent("<link src=\"styles.css\"/>")).
-            variable("time", Example1::formatTime).
-            variable("answer", () -> 2 + 2).
-            variable("weather", "Sunny").
-            i18n("i18n1", "key1").
-            i18n("i18n2", "key2", Math.random()).
-            condition("am", () -> Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 11).
-            list("menu", content -> 
-                Arrays.asList("Mon", "Tue", "Wed", "Thu", "Fri").stream().map(day -> 
-                    TemplateModel.ofContent(content).
-                        variable("day", day).
-                        variable("link", () -> "/warp-to>day=" + day).
-                        condition("friday", () -> day.equals("Fri"))
-                ).toList()
-            )));
+                variable("time", Example1::formatTime).
+                variable("answer", () -> 2 + 2).
+                variable("weather", "Sunny").
+                i18n("i18n1", "key1").
+                i18n("i18n2", "key2", Math.random()).
+                condition("am", () -> Calendar.getInstance().get(Calendar.HOUR_OF_DAY) > 11).
+                list("menu", content -> 
+                    Arrays.asList("Mon", "Tue", "Wed", "Thu", "Fri").stream().map(day -> 
+                        TemplateModel.ofContent(content).
+                            variable("day", day).
+                            variable("link", () -> "/warp-to>day=" + day).
+                            condition("friday", () -> day.equals("Fri"))
+                    ).toList()
+                ))
+            );
     }
     
     private static String formatTime() {
