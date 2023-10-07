@@ -824,7 +824,7 @@ public class Templates {
 								logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
 								return;
 							} else {
-								if(isIf) {
+								if(directive.equals(block.scope) && isIf) {
 									buf.setLength(0);
 								}
 								else {

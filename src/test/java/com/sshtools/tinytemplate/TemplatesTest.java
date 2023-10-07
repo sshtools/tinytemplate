@@ -488,6 +488,98 @@ public class TemplatesTest {
 					variable("var1", "Some Name")));
 	}
 	
+	
+	@Test
+	public void testTemplateIncludeWithList() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+					
+					<div class="alert alert-style-0" role="alert">
+						
+						Title 0
+						
+					</div>
+				
+					<div class="alert alert-style-1" role="alert">
+						
+						Title 1
+						
+					</div>
+				
+					<div class="alert alert-style-2" role="alert">
+						
+						Title 2
+						
+					</div>
+				
+					<div class="alert alert-style-3" role="alert">
+						
+							<i class="bi bi-icon-3"></i>
+						
+						Title 3
+						
+					</div>
+				
+					<div class="alert alert-style-4" role="alert">
+						
+							<i class="bi bi-icon-4"></i>
+						
+						Title 4
+						
+							<br/>
+							<small>Description4</small>
+						
+					</div>
+				
+				
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent(
+				"""
+				<html>
+				<body>
+				<t:if alerts>
+					<t:include alerts />
+				</t:if>
+				</body>
+				</html>
+			 	""").
+				include("alerts", 
+					TemplateModel.ofContent("""
+						<t:list items>
+							<div class="alert alert-${style}" role="alert">
+								<t:if icon>
+									<i class="bi bi-${icon}"></i>
+								</t:if>
+								${title}
+								<t:if description>
+									<br/>
+									<small>${description}</small>
+								</t:if>
+							</div>
+						</t:list>
+						""").list("items", (content) -> {
+							var l = new ArrayList<TemplateModel>();
+							for(int i = 0 ; i < 5 ; i++) {
+								var itemMdl = TemplateModel.ofContent(content).
+										variable("style", "style-" + i).
+										variable("title", "Title " + i);
+								if(i > 2)
+									itemMdl.variable("icon", "icon-" + i);
+								if(i > 3)
+									itemMdl.variable("description", "Description" + i);
+								l.add(itemMdl);
+							}
+							return l;
+						})
+					)
+				).stripIndent());
+	}
+	
 	@Test
 	public void testTemplateIfWithInclude() {
 		Assertions.assertEquals("""
