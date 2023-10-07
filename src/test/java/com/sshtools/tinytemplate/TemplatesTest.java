@@ -428,7 +428,9 @@ public class TemplatesTest {
 				
 				<div>Row 1 Whatever</div>
 				
+				
 				<div>Row 2 Row2</div>
+				
 				
 				<div>Row 3 Whatever</div>
 				
@@ -437,7 +439,9 @@ public class TemplatesTest {
 				
 				<div>Row 4 Whatever</div>
 				
+				
 				<div>Row 5 Whatever</div>
+				
 				
 				</body>
 				</html>
