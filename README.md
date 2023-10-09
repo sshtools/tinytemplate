@@ -22,7 +22,7 @@ Feature complete. Just some test coverage to complete and addition of Javadoc.
 ## Features
 
  * No dependencies, JPMS compliant, Graal Native Image friendly
- * Fast. Single pass parser, use lambas to compute template components only when
+ * Fast. Single pass parser, use lambdas to compute template components only when
    they are actually needed.
  * Simple Java. Public API consists of just 2 main classes, `TemplateModel` and `TemplateProcessor`.
  * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>` and `<t:list>`. Bash like variable such as `${myVar}`.
