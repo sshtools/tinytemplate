@@ -45,8 +45,16 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Templates {
+	
+	@FunctionalInterface
+	public interface VariableStore extends Function<String, Object> {
+		default boolean contains(String key) {
+			return apply(key) != null;
+		}
+	}
 
 	public final static class VariableExpander {
 
@@ -56,7 +64,7 @@ public class Templates {
 			private Set<Supplier<ResourceBundle>> bundles = new LinkedHashSet<>();
 			private Function<String, Boolean> conditionEvaluator;
 			private Optional<Logger> logger = Optional.of(defaultStdOutLogger());
-			private Function<String, Supplier<?>> variableSupplier;
+			private Function<String, ?> variableSupplier;
 
 			public Builder withNullsAsNull() {
 				return withNullsAreEmpty(false);
@@ -100,7 +108,7 @@ public class Templates {
 				return this;
 			}
 
-			public Builder withVariableSupplier(Function<String, Supplier<?>> variableSupplier) {
+			public Builder withVariableSupplier(Function<String, ?> variableSupplier) {
 				this.variableSupplier = variableSupplier;
 				return this;
 			}
@@ -115,10 +123,7 @@ public class Templates {
 			}
 
 			public Builder fromSimpleMap(Map<String, ? extends Object> map) {
-				withVariableSupplier(k -> {
-					var val = map.get(k);
-					return val == null ? null : () -> val;
-				});
+				withVariableSupplier(map::get);
 				withConditionEvaluator(k -> eval(map, k));
 				return this;
 			}
@@ -144,7 +149,7 @@ public class Templates {
 		private final static String TERN_REGEXP = "([^:]*)(:)(.*)";
 
 		private final Pattern exprPattern;
-		private final Function<String, Supplier<?>> variableSupplier;
+		private final Function<String, ?> variableSupplier;
 		private final boolean nullsAreEmpty;
 		private final boolean missingThrowsException;
 		private final Optional<Logger> logger;
@@ -276,11 +281,10 @@ public class Templates {
 		}
 
 		private Object supplyVal(String param) {
-			var supplier = variableSupplier.apply(param);
-			if (missingThrowsException && supplier == null)
+			var val = variableSupplier.apply(param);
+			if (missingThrowsException && val == null)
 				throw new IllegalArgumentException(
 						MessageFormat.format("Required variable ''{0}'' is missing", param));
-			var val = supplier == null ? null : supplier.get();
 			return val;
 		}
 
@@ -337,7 +341,7 @@ public class Templates {
 		return LazyDefaultStdOutLogger.DEFAULT;
 	}
 
-	public static class TemplateModel implements Closeable {
+	public final static class TemplateModel implements Closeable {
 
 		public static TemplateModel ofContent(String content) {
 			return new TemplateModel(new StringReader(content));
@@ -375,16 +379,35 @@ public class Templates {
 
 		final Reader text;
 		final Map<String, Supplier<Boolean>> conditions = new HashMap<>();
-		final Map<String, Supplier<?>> variables = new HashMap<>();
 		final Map<String, Function<String, List<TemplateModel>>> lists = new HashMap<>();
+		final Map<String, Function<String, TemplateModel>> templates = new HashMap<>();
 		final Map<String, Supplier<TemplateModel>> includes = new HashMap<>();
 		final List<Function<Locale, ResourceBundle>> bundles = new ArrayList<>();
-		private Optional<Supplier<Locale>> locale = Optional.empty();
+		final List<VariableStore> variables = new ArrayList<>();
+		final VariableStore defaultVariableStore;
+		final Map<String, Supplier<?>> defaultVariables = new HashMap<>();
+		Optional<Supplier<Locale>> locale = Optional.empty();
+		Optional<TemplateModel> parent = Optional.empty();
 
 		public final static Object[] NO_ARGS = new Object[0];
 
 		private TemplateModel(Reader text) {
 			this.text = text;
+			
+			defaultVariableStore = new VariableStore() {
+				
+				@Override
+				public boolean contains(String key) {
+					return defaultVariables.containsKey(key);
+				}
+
+				@Override
+				public Object apply(String key) {
+					var sup = defaultVariables.get(key);
+					return sup == null ? null : sup.get();
+				}
+			}; 
+			variables.add(defaultVariableStore);
 		}
 
 		@Override
@@ -471,6 +494,15 @@ public class Templates {
 			return this;
 		}
 
+		public TemplateModel template(String key, TemplateModel template) {
+			return template(key, (content) -> template);
+		}
+
+		public TemplateModel template(String key, Function<String, TemplateModel> template) {
+			templates.put(key, template);
+			return this;
+		}
+
 		public TemplateModel list(String key, List<TemplateModel> list) {
 			return list(key, (content) -> list);
 		}
@@ -489,10 +521,18 @@ public class Templates {
 
 		@SuppressWarnings("unchecked")
 		public <V> V variable(String key) {
-			var val = variables.get(key);
-			if (val == null)
-				throw new IllegalArgumentException(MessageFormat.format("No variable with key {0}", key));
-			return (V) val.get();
+			for(var vars : variables) {
+				if(vars.contains(key)) {
+					return (V)vars.apply(key);
+				}
+			}
+			return null;
+//			throw new IllegalArgumentException(MessageFormat.format("No variable with key {0}", key));
+		}
+		
+		public TemplateModel variables(VariableStore store) {
+			variables.add(store);
+			return this;
 		}
 
 		public TemplateModel variable(String key, Object variable) {
@@ -500,7 +540,7 @@ public class Templates {
 		}
 
 		public TemplateModel variable(String key, Supplier<?> variable) {
-			variables.put(key, variable);
+			defaultVariables.put(key, variable);
 			return this;
 		}
 
@@ -517,7 +557,7 @@ public class Templates {
 				var v = variable.get();
 				if (v != null) {
 					var a = args.get();
-					for (var bundle : bundles) {
+					for (var bundle : resolveBundles().toList()) {
 						try {
 							if (a.length == 0)
 								return bundle.apply(Locale.getDefault()).getString(String.valueOf(v));
@@ -537,14 +577,31 @@ public class Templates {
 			templ.locale = locale;
 			templ.bundles.addAll(bundles);
 			templ.conditions.putAll(conditions);
-			templ.variables.putAll(variables);
+			templ.defaultVariables.putAll(defaultVariables);
+			templ.variables.addAll(variables.subList(1, variables.size()));
 			templ.lists.putAll(lists);
+			templ.templates.putAll(templates);
 			templ.includes.putAll(includes);
 			return templ;
+		}
+		
+		public boolean hasVariable(String key) {
+			for(var store : variables) {
+				if(store.contains(key))
+					return true;
+			}
+			return false;
 		}
 
 		Locale calcLocale(TemplateModel model) {
 			return model.locale.map(ol -> ol.get()).orElse(Locale.getDefault());
+		}
+
+		public Stream<Function<Locale, ResourceBundle>> resolveBundles() {
+			if(parent.isPresent())
+				return Stream.concat(bundles.stream(), parent.get().resolveBundles());
+			else
+				return bundles.stream();
 		}
 	}
 
@@ -641,7 +698,7 @@ public class Templates {
 			boolean match = true;
 			boolean capture = false;
 			boolean inElse = false;
-			int ifDepth = 0;
+			int nestDepth = 0;
 			
 			Block(TemplateModel model, VariableExpander expander, Reader reader/* , String scope */) {
 				this(model, expander, reader, null, true);
@@ -676,14 +733,14 @@ public class Templates {
 			var exp = expander.orElseGet(() -> {
 				return new VariableExpander.Builder().withMissingThrowsException(missingThrowsException)
 						.withNullsAreEmpty(nullsAreEmpty).withLogger(logger)
-						.withBundleSuppliers(model.bundles.stream().map(f -> {
+						.withBundleSuppliers(model.resolveBundles().map(f -> {
 							return new Supplier<ResourceBundle>() {
 								@Override
 								public ResourceBundle get() {
 									return f.apply(locale);
 								}
 							};
-						}).collect(Collectors.toList())).withVariableSupplier(model.variables::get)
+						}).collect(Collectors.toList())).withVariableSupplier(model::variable)
 						.withConditionEvaluator(cond -> conditionOrVariable(model, cond, "").orElseGet(() -> {
 							logger.ifPresent(l -> l.debug("Missing condition {0}, assuming {1}", cond, false));
 							return false;
@@ -726,7 +783,7 @@ public class Templates {
 					// Vars
 					//
 					case VAR_START:
-						if (ch == '{') {
+						if (process && ch == '{') {
 							block.state = State.VAR_BRACE;
 							buf.append(ch);
 						} else {
@@ -772,8 +829,8 @@ public class Templates {
 					case T_TAG_NAME:
 						if (ch == '>') {
 							var directive = buf.toString().substring(1).trim();
-							if(directive.startsWith("t:if ")) {
-								block.ifDepth++;
+							if(directive.startsWith("t:if ") || directive.startsWith("t:list ")) {
+								block.nestDepth++;
 							}
 							if(process) {
 								if(processDirective(block, directive)) {
@@ -816,15 +873,15 @@ public class Templates {
 					case T_TAG_END:
 						if(ch == '>') {
 							var directive = buf.toString().substring(4).trim();
-							var isIf = directive.equals("if");
-							if(isIf) {
-								block.ifDepth--;
+							var isNest = directive.equals("if") || directive.equals("list");
+							if(isNest) {
+								block.nestDepth--;
 							}
-							if(directive.equals(block.scope) && (!isIf || (isIf && block.ifDepth == 0))) {
+							if(directive.equals(block.scope) && (!isNest || (isNest && block.nestDepth == 0))) {
 								logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
 								return;
 							} else {
-								if(directive.equals(block.scope) && isIf) {
+								if(directive.equals(block.scope) && isNest && process) {
 									buf.setLength(0);
 								}
 								else {
@@ -892,7 +949,7 @@ public class Templates {
 					match = !match;
 				
 				var ifBlock = new Block(block.model, getExpanderForModel(block.model), block.model.text, "if", match);
-				ifBlock.ifDepth = 1;
+				ifBlock.nestDepth = 1;
 				
 				read(ifBlock);
 				
@@ -905,7 +962,7 @@ public class Templates {
 			else if(dir.equals("t:include")) {
 				var includeModel = block.model.includes.get(var);
 				if (includeModel == null) {
-					logger.ifPresent(l -> l.warning("No include in model named {0}", var));
+					logger.ifPresent(l -> l.debug("No include in model named {0}", var));
 					return false;
 				} else {
 					var include = includeModel.get();
@@ -922,6 +979,34 @@ public class Templates {
 				block.state = State.START;
 				return true;
 			}
+			else if(dir.equals("t:template")) {
+				var templateSupplier = block.model.templates.get(var);
+				if (templateSupplier == null) {
+					logger.ifPresent(l -> l.warning("Missing template {0} in message template", var));
+					return false;
+				}
+				else {
+					var templBlock = new Block(block.model, block.expander, block.reader, "template", true);
+					templBlock.nestDepth = 1;
+					templBlock.capture = true;
+					read(templBlock);
+					
+					var templ = templateSupplier.apply(templBlock.out.toString());
+					var was = templ.parent;
+					try {
+						templ.parent = Optional.of(block.model);
+						var listBlock = new Block(templ, getExpanderForModel(templ), templ.text);
+						read(listBlock);				
+						block.out.append(listBlock.out.toString());	
+					}
+					finally {
+						templ.parent = was;
+					}
+					
+					block.state = State.START;
+					return true;
+				}
+			}
 			else if(dir.equals("t:list")) {
 				var listSupplier = block.model.lists.get(var);
 				if (listSupplier == null) {
@@ -931,13 +1016,28 @@ public class Templates {
 				else {
 					/* Temporary block to read all the content we must repeat */
 					var tempBlock = new Block(block.model, block.expander, block.reader, "list", true);
+					tempBlock.nestDepth = 1;
 					tempBlock.capture = true;
 					read(tempBlock);
 					
-					for(var templ : listSupplier.apply(tempBlock.out.toString())) {
-						var listBlock = new Block(templ, getExpanderForModel(templ), templ.text);
-						read(listBlock);									
-						block.out.append(listBlock.out.toString());
+					var templates = listSupplier.apply(tempBlock.out.toString());
+					var index = 0;
+					for(var templ : templates) {
+						var was = templ.parent;
+						templ.parent = Optional.of(block.model);
+						try {
+							templ.variable("_index", index);
+							templ.variable("_first", index == 0);
+							templ.variable("_last", index == templates.size() - 1);
+							var listBlock = new Block(templ, getExpanderForModel(templ), templ.text);
+							read(listBlock);									
+							block.out.append(listBlock.out.toString());
+						}
+						finally {
+							templ.parent = was;
+						}
+						
+						index++;
 					}
 					
 					block.state = State.START;
@@ -958,8 +1058,10 @@ public class Templates {
 				return Optional.of(true);
 			} else if (content != null && model.lists.containsKey(attributeName)) {
 				return Optional.of(!(model.lists.get(attributeName).apply(content).isEmpty()));
-			} else if (model.variables.containsKey(attributeName)) {
-				var var = model.variables.get(attributeName).get();
+			} else if (content != null && model.templates.containsKey(attributeName)) {
+				return Optional.of(true);
+			} else if (model.hasVariable(attributeName)) {
+				var var = model.variable(attributeName);
 	
 				if (var instanceof Optional) {
 					var = ((Optional) var).isEmpty() ? null : ((Optional) var).get();
@@ -974,6 +1076,8 @@ public class Templates {
 				} else if (var != null) {
 					return Optional.of(Boolean.TRUE);
 				}
+			} else if(model.parent.isPresent()) {
+				return conditionOrVariable(model.parent.get(), attributeName, content);
 			}
 			return Optional.empty();
 		}

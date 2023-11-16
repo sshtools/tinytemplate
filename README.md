@@ -13,7 +13,7 @@ A lightweight Java string template engine. While it is intended to be used with 
 will work with any text content. While small, it has some unique features and is fast and 
 flexible.
 
-It requires just 4 HTML-like tags, and a bash-like variable expression syntax.
+It requires just 5 HTML-like tags, and a bash-like variable expression syntax.
 
 ## Status
 
@@ -25,7 +25,7 @@ Feature complete. Just some test coverage to complete and addition of Javadoc.
  * Fast. Single pass parser, use lambdas to compute template components only when
    they are actually needed.
  * Simple Java. Public API consists of just 2 main classes, `TemplateModel` and `TemplateProcessor`.
- * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>` and `<t:list>`. Bash like variable such as `${myVar}`.
+ * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>`, `<t:template>` and `<t:list>`. Bash like variable such as `${myVar}`.
  * Internationalisation features.       
 
 ## Quick Start

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -416,6 +417,133 @@ public class TemplatesTest {
 					list("aList", (content) -> IntStream.of(1,2,3,4,5).mapToObj(i -> {
 						return TemplateModel.ofContent(content).
 							variable("row", "Row " + i);
+					}).toList()).
+					variable("var1", "Some Name")));
+	}
+	
+	@Test
+	public void testTemplateNestedList() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+						<div>Row 1</div>
+						<div>more text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>A</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>B</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>C</div>
+							<div>more inner text</div>
+				\t\t
+						<div>yet more text</div>
+						<div>and yet more text</div>
+				
+						<div>Row 2</div>
+						<div>more text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>A</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>B</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>C</div>
+							<div>more inner text</div>
+				\t\t
+						<div>yet more text</div>
+						<div>and yet more text</div>
+				
+						<div>Row 3</div>
+						<div>more text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>A</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>B</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>C</div>
+							<div>more inner text</div>
+				\t\t
+						<div>yet more text</div>
+						<div>and yet more text</div>
+				
+						<div>Row 4</div>
+						<div>more text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>A</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>B</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>C</div>
+							<div>more inner text</div>
+				\t\t
+						<div>yet more text</div>
+						<div>and yet more text</div>
+				
+						<div>Row 5</div>
+						<div>more text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>A</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>B</div>
+							<div>more inner text</div>
+				\t\t
+							<div>some inner text</div>
+							<div>C</div>
+							<div>more inner text</div>
+				\t\t
+						<div>yet more text</div>
+						<div>and yet more text</div>
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:list aList>
+						<div>${row}</div>
+						<div>more text</div>
+						<t:list bList>
+							<div>some inner text</div>
+							<div>${innerRow}</div>
+							<div>more inner text</div>
+						</t:list>
+						<div>yet more text</div>
+						<div>and yet more text</div>
+				</t:list>
+				</body>
+				</html>
+				 	 """).
+					list("aList", (content) -> IntStream.of(1,2,3,4,5).mapToObj(i -> {
+						return TemplateModel.ofContent(content).
+							variable("row", "Row " + i).
+							list("bList", (bcontent) -> Stream.of("A", "B", "C").map(a -> {
+								return TemplateModel.ofContent(bcontent).
+										variable("innerRow", a);
+							}).toList());
 					}).toList()).
 					variable("var1", "Some Name")));
 	}
