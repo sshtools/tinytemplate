@@ -347,8 +347,8 @@ public class Templates {
 	public final static class TemplateModel implements Closeable {
 
 		public static TemplateModel ofPath(Path path) {
-			try(var rdr = Files.newBufferedReader(path)) {
-				return new TemplateModel(rdr);
+			try {
+				return new TemplateModel(Files.newBufferedReader(path));
 			}
 			catch(IOException ioe) {
 				throw new UncheckedIOException(ioe);
