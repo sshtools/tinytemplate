@@ -21,12 +21,15 @@
 package com.sshtools.tinytemplate;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -342,6 +345,19 @@ public class Templates {
 	}
 
 	public final static class TemplateModel implements Closeable {
+
+		public static TemplateModel ofPath(Path path) {
+			try(var rdr = Files.newBufferedReader(path)) {
+				return new TemplateModel(rdr);
+			}
+			catch(IOException ioe) {
+				throw new UncheckedIOException(ioe);
+			}
+		}
+		
+		public static TemplateModel ofFile(File file) {
+			return ofPath(file.toPath());
+		}
 
 		public static TemplateModel ofContent(String content) {
 			return new TemplateModel(new StringReader(content));
