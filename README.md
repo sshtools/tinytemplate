@@ -82,6 +82,12 @@ public class Example1 {
                         </t:list>
                         <ul> 
                     </t:if>
+                    
+                    <t:template me>
+                        <p>Name: ${name}</p>
+                        <p>Age: ${age}</p>
+                        <p>Location: ${location}</p>                        
+                    </t:template>
                 </body>
             </html>
                 """).
@@ -100,7 +106,11 @@ public class Example1 {
                             variable("link", () -> "/warp-to>day=" + day).
                             condition("friday", () -> day.equals("Fri"))
                     ).toList()
-                ))
+                )).
+                template("me", content -> Template.ofContent(content).
+                    variable("name", "Joe B").
+                    variable("age", 44).
+                    variable("location", "London"))
             );
     }
     
@@ -119,5 +129,33 @@ key1=Some Text
 key2=Some other text with an argument. Random number is {0}
 ```
 
- 
+## Variable Expansion
 
+TinyTemplate supports a sort-of-like-Bash syntax for variable expansion. The exact
+behaviour of each *string* replacement depends on a *parameter* and an *operator*.
+
+The general syntax is `${parameter[<options>]}`. The *parameter* and any options are evaluated, then all text starting
+with the `$` and ending with the `}` is substituted with the result. 
+
+### ${parameter}
+
+Simplest type. Just always substitute with with value of a *variable* from the model.
+
+### ${parameter:?string:otherString}
+
+If *parameter* evaluates to false as either a *variable* or *condition*, the expansion of *otherString* 
+is substituted. Otherwise, the expansion of *string* is substituted. 
+
+### ${parameter:-string}
+
+If *parameter* evaluates to false as either a *variable* or *condition*, the expansion of *string* is substituted.
+Otherwise, the value of *parameter* is substituted.
+
+### ${parameter:+string}
+
+If *parameter* evaluates to false as either a *variable* or *condition*, an empty string is substituted, otherwise 
+the expansion of *string* is substituted.
+
+### ${parameter:=word}
+
+If *parameter* evaluates to false as either a *variable* or *condition*, the expansion of word is substituted, otherwise an empty string is substituted.
