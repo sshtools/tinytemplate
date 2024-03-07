@@ -26,13 +26,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.sshtools</groupId>
     <artifactId>tinytemplate</artifactId>
-    <version>0.9.3</version>
+    <version>1.0.0-SNAPSHOT</version>
     <name>TinyTemplate</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<build.projectProperties>${basedir}/jadaptive.build.properties</build.projectProperties>
 		<build.userProperties>${user.home}/.jadaptive.build.properties</build.userProperties>
+        <build.quietProperties>true</build.quietProperties>
     </properties>
     <developers>
         <developer>
@@ -90,7 +91,7 @@
 							<goal>read-project-properties</goal>
 						</goals>
 						<configuration>
-							<quiet>false</quiet>
+							<quiet>${build.quietProperties}</quiet>
 							<files>
 								<file>${build.projectProperties}</file>
 								<file>${build.userProperties}</file>
