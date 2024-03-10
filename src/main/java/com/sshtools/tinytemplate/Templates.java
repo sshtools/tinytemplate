@@ -642,6 +642,7 @@ public class Templates {
 		public final static class Builder {
 			private boolean nullsAreEmpty = true;
 			private boolean missingThrowsException = true;
+			private boolean missingConditionIsFalse = true;
 			private Optional<Logger> logger = Optional.empty();
 			private Optional<VariableExpander> expander = Optional.empty();
 	
@@ -660,6 +661,11 @@ public class Templates {
 	
 			public Builder withMissingThrowsException(boolean missingThrowsException) {
 				this.missingThrowsException = missingThrowsException;
+				return this;
+			}
+	
+			public Builder withMissingConditionIsFalse(boolean missingConditionIsFalse) {
+				this.missingConditionIsFalse = missingConditionIsFalse;
 				return this;
 			}
 	
@@ -685,6 +691,7 @@ public class Templates {
 	
 		private final boolean nullsAreEmpty;
 		private final boolean missingThrowsException;
+		private final boolean missingConditionIsFalse;
 		private final Optional<Logger> logger;
 		private final Optional<VariableExpander> expander;
 		
@@ -736,6 +743,7 @@ public class Templates {
 		private TemplateProcessor(Builder bldr) {
 			this.nullsAreEmpty = bldr.nullsAreEmpty;
 			this.missingThrowsException = bldr.missingThrowsException;
+			this.missingConditionIsFalse = bldr.missingConditionIsFalse;
 			this.logger = bldr.logger;
 			this.expander = bldr.expander;
 		}
@@ -960,7 +968,12 @@ public class Templates {
 				var match = false;
 				
 				if (conditionOr.isEmpty()) {
-					logger.ifPresent(l -> l.debug("Missing condition {0}, assuming {1}", condition.name, false));
+					if(!missingConditionIsFalse) {
+						if(missingThrowsException)
+							throw new IllegalStateException(MessageFormat.format("No condition in model named {0}.", condition.name));
+						else
+							logger.ifPresent(l -> l.warning("No condition in model named {0}, assuming {1}", condition.name, false));
+					}
 				} else {
 					match = conditionOr.get();
 				}
@@ -982,7 +995,10 @@ public class Templates {
 			else if(dir.equals("t:include")) {
 				var includeModel = block.model.includes.get(var);
 				if (includeModel == null) {
-					logger.ifPresent(l -> l.debug("No include in model named {0}", var));
+					if(missingThrowsException)
+						throw new IllegalStateException(MessageFormat.format("No include in model named {0}.", var));
+					else
+						logger.ifPresent(l -> l.warning("No include in model named {0}", var));
 					return false;
 				} else {
 					var include = includeModel.get();
@@ -1002,7 +1018,10 @@ public class Templates {
 			else if(dir.equals("t:object")) {
 				var templateSupplier = block.model.templates.get(var);
 				if (templateSupplier == null) {
-					logger.ifPresent(l -> l.warning("Missing template {0} in message template", var));
+					if(missingThrowsException)
+						throw new IllegalStateException(MessageFormat.format("No object in model name {0}.", var));
+					else
+						logger.ifPresent(l -> l.warning("No object in model named {0}.", var));
 					return false;
 				}
 				else {
@@ -1030,7 +1049,10 @@ public class Templates {
 			else if(dir.equals("t:list")) {
 				var listSupplier = block.model.lists.get(var);
 				if (listSupplier == null) {
-					logger.ifPresent(l -> l.warning("Missing list {0} in message template", var));
+					if(missingThrowsException)
+						throw new IllegalStateException(MessageFormat.format("No list in model named {0}.", var));
+					else
+						logger.ifPresent(l -> l.warning("No list in model named {0}", var));
 					return false;
 				}
 				else {

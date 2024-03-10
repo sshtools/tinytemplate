@@ -304,7 +304,8 @@ public class TemplatesTest {
 				</body>
 				</html>
 				 	 """).
-					condition("aCondition", true)));
+					condition("aCondition", true).
+					condition("bCondition", false)));
 	}
 	
 	@Test
@@ -383,7 +384,8 @@ public class TemplatesTest {
 				</body>
 				</html>
 				 	 """).
-					condition("aCondition", true)));
+					condition("aCondition", true).
+					condition("bCondition", false)));
 	}
 	
 	@Test
@@ -781,7 +783,8 @@ public class TemplatesTest {
 				</body>
 				</html>
 				 	 """).
-					condition("aCondition", true)));
+					condition("aCondition", true).
+					condition("bCondition", false)));
 		
 	}
 	
@@ -798,36 +801,6 @@ public class TemplatesTest {
 			</div>
 		</t:if>
 		""";
-		
-	}
-	
-	@Test
-	public void testTEMPXXXXXXX() {
-		Assertions.assertEquals("""
-				<html>
-				<body>
-				
-				<p>Show this</p>
-				
-				<p>And show this too</p>
-				
-				
-				</body>
-				</html>
-				""", 
-				createParser().process(TemplateModel.ofContent("""
-				<html>
-				<body>
-				<t:if aCondition>
-				<p>Show this</p>
-				<t:if !bCondition>
-				<p>And show this too</p>
-				</t:if>
-				</t:if>
-				</body>
-				</html>
-				 	 """).
-					condition("aCondition", true)));
 		
 	}
 	
