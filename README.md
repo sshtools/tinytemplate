@@ -185,7 +185,7 @@ the expansion of *string* is substituted.
 <input type="checked" ${selected:+checked} name="selected">
 ```
 
-### ${parameter:=word}
+### ${parameter:=string}
 
 If *parameter* evaluates to false as either a *variable* or *condition*, the expansion of word is substituted, otherwise an empty string is substituted.
 

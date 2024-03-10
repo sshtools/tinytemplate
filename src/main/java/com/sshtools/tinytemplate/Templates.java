@@ -546,6 +546,10 @@ public class Templates {
 //			throw new IllegalArgumentException(MessageFormat.format("No variable with key {0}", key));
 		}
 		
+		public Map<String, Supplier<?>> variables() {
+			return Collections.unmodifiableMap(defaultVariables);
+		}
+		
 		public TemplateModel variables(VariableStore store) {
 			variables.add(store);
 			return this;
