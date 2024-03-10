@@ -898,11 +898,15 @@ public class TemplatesTest {
 		Assertions.assertEquals("""
 				<html>
 				<body>
-				
+				<t:object aTemplate>
+				<p>Should not be visible</p>
+				<p>Name: </p>
+				</t:object>
 				</body>
 				</html>
 				""", 
-				createParser().process(TemplateModel.ofContent("""
+				new TemplateProcessor.Builder().withMissingAsNull().build().process(
+		TemplateModel.ofContent("""
 				<html>
 				<body>
 				<t:object aTemplate>
@@ -911,8 +915,7 @@ public class TemplatesTest {
 				</t:object>
 				</body>
 				</html>
-				 	 """).
-				variable("name", "Joe B")));
+				 	 """)));
 		
 	}
 	
