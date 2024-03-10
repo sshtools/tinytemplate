@@ -849,7 +849,7 @@ public class Templates {
 					case T_TAG_NAME:
 						if (ch == '>') {
 							var directive = buf.toString().substring(1).trim();
-							if(directive.startsWith("t:if ") || directive.startsWith("t:list ")) {
+							if(directive.startsWith("t:if ") || directive.startsWith("t:list ") || directive.startsWith("t:object ")) {
 								block.nestDepth++;
 							}
 							if(process) {
@@ -999,14 +999,14 @@ public class Templates {
 				block.state = State.START;
 				return true;
 			}
-			else if(dir.equals("t:template")) {
+			else if(dir.equals("t:object")) {
 				var templateSupplier = block.model.templates.get(var);
 				if (templateSupplier == null) {
 					logger.ifPresent(l -> l.warning("Missing template {0} in message template", var));
 					return false;
 				}
 				else {
-					var templBlock = new Block(block.model, block.expander, block.reader, "template", true);
+					var templBlock = new Block(block.model, block.expander, block.reader, "object", true);
 					templBlock.nestDepth = 1;
 					templBlock.capture = true;
 					read(templBlock);

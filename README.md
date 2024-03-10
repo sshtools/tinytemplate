@@ -24,7 +24,7 @@ Feature complete. Just some test coverage to complete and addition of Javadoc.
  * No dependencies, JPMS compliant, Graal Native Image friendly
  * Fast. See Design Choices.
  * Simple Java. Public API consists of just 2 main classes, `TemplateModel` and `TemplateProcessor`.
- * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>`, `<t:template>` and `<t:list>`. Bash like variable such as `${myVar}`.
+ * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>`, `<t:object>` and `<t:list>`. Bash like variable such as `${myVar}`.
  * Internationalisation features.  
  
 ## Design Choices
@@ -90,11 +90,11 @@ public class Example1 {
                         <ul> 
                     </t:if>
                     
-                    <t:template me>
+                    <t:object me>
                         <p>Name: ${name}</p>
                         <p>Age: ${age}</p>
                         <p>Location: ${location}</p>                        
-                    </t:template>
+                    </t:object>
                 </body>
             </html>
                 """).

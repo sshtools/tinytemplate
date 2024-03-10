@@ -893,6 +893,66 @@ public class TemplatesTest {
 		
 	}
 	
+	@Test
+	public void testTemplateObjectMissing() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:object aTemplate>
+				<p>Should not be visible</p>
+				<p>Name: ${name}</p>
+				</t:object>
+				</body>
+				</html>
+				 	 """).
+				variable("name", "Joe B")));
+		
+	}
+	
+	@Test
+	public void testTemplateObject() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				<p>Some text</p>
+				
+				<p>Name: Joe B</p>
+				<p>Age: 27</p>
+				<p>Location: London</p>
+				
+				<p>Some other text</p>
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<p>Some text</p>
+				<t:object aPerson>
+				<p>Name: ${name}</p>
+				<p>Age: ${age}</p>
+				<p>Location: ${location}</p>
+				</t:object>
+				<p>Some other text</p>
+				</body>
+				</html>
+				 	 """).
+				template("aPerson", (c) ->
+					TemplateModel.ofContent(c).
+						variable("name", "Joe B").
+						variable("age", "27").
+						variable("location", "London")
+				)));
+		
+	}
+	
 	private TemplateProcessor createParser() {
 		return new TemplateProcessor.Builder().build();
 	}
