@@ -551,6 +551,45 @@ public class TemplatesTest {
 	}
 	
 	@Test
+	public void testTemplateIfAfterIfAndElseWithNestedIf() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				
+				<p>Show this</p>
+				
+				<p>And this</p>
+				
+				
+				
+				<p>Do show this</p>
+				
+				</body>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<t:if aCondition>
+				<p>Show this</p>
+				<t:if cCondition>
+				<p>And this</p>
+				</t:if>
+				<t:else/>
+				<p>Dont show this</p>
+				</t:if>
+				<t:if bCondition>
+				<p>Do show this</p>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					condition("cCondition", true).
+					condition("aCondition", true).
+					condition("bCondition", true)));
+	}
+	
+	@Test
 	public void testTemplateWithConditionsInList() {
 		Assertions.assertEquals("""
 				<html>

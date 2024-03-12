@@ -905,17 +905,25 @@ public class Templates {
 							if(isNest) {
 								block.nestDepth--;
 							}
-							if(directive.equals(block.scope) && (!isNest || (isNest && block.nestDepth == 0))) {
-								logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
-								return;
-							} else {
-								if(directive.equals(block.scope) && isNest && process) {
-									buf.setLength(0);
+							try {
+								if(directive.equals(block.scope) && (!isNest || (isNest && block.nestDepth == 0))) {
+									logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
+									return;
+								} else {
+									if(directive.equals(block.scope) && isNest && process) {
+										buf.setLength(0);
+									}
+									else {
+										flushBuf(ch, buf, block);
+									}
+									block.state = State.START;
 								}
-								else {
-									flushBuf(ch, buf, block);
+							}
+							finally {
+								if(directive.equals("if") && block.inElse) {
+									block.inElse = false;
+									block.match = !block.match;
 								}
-								block.state = State.START;
 							}
 						}
 						else {
@@ -957,9 +965,11 @@ public class Templates {
 		}
 		
 		private boolean processDirective(Block block, String directive) {
+			
 			var spc = directive.indexOf(' ');
 			var dir = ( spc == -1 ? directive : directive.substring(0, spc)).trim();
 			var var = ( spc == -1 ? null : directive.substring(spc + 1).trim());
+			
 			if(dir.equals("t:if")) {
 				
 				var condition = Condition.parse(var);
