@@ -114,7 +114,7 @@ public class Example1 {
                             condition("friday", () -> day.equals("Fri"))
                     ).toList()
                 )).
-                template("me", content -> Template.ofContent(content).
+                object("me", content -> Template.ofContent(content).
                     variable("name", "Joe B").
                     variable("age", 44).
                     variable("location", "London"))

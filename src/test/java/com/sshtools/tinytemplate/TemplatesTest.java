@@ -959,7 +959,7 @@ public class TemplatesTest {
 				</body>
 				</html>
 				 	 """).
-				template("aPerson", (c) ->
+				object("aPerson", (c) ->
 					TemplateModel.ofContent(c).
 						variable("name", "Joe B").
 						variable("age", "27").

@@ -510,11 +510,11 @@ public class Templates {
 			return this;
 		}
 
-		public TemplateModel template(String key, TemplateModel template) {
-			return template(key, (content) -> template);
+		public TemplateModel object(String key, TemplateModel template) {
+			return object(key, (content) -> template);
 		}
 
-		public TemplateModel template(String key, Function<String, TemplateModel> template) {
+		public TemplateModel object(String key, Function<String, TemplateModel> template) {
 			templates.put(key, template);
 			return this;
 		}
