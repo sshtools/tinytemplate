@@ -393,7 +393,6 @@ public class Templates {
 
 		}
 
-		final Reader text;
 		final Map<String, Supplier<Boolean>> conditions = new HashMap<>();
 		final Map<String, Function<String, List<TemplateModel>>> lists = new HashMap<>();
 		final Map<String, Function<String, TemplateModel>> templates = new HashMap<>();
@@ -404,11 +403,14 @@ public class Templates {
 		final Map<String, Supplier<?>> defaultVariables = new HashMap<>();
 		Optional<Supplier<Locale>> locale = Optional.empty();
 		Optional<TemplateModel> parent = Optional.empty();
+		
+		private final Reader xtext;
+		private StringBuilder buffer = null;
 
 		public final static Object[] NO_ARGS = new Object[0];
-
+		
 		private TemplateModel(Reader text) {
-			this.text = text;
+			this.xtext = text;
 			
 			defaultVariableStore = new VariableStore() {
 				
@@ -425,11 +427,40 @@ public class Templates {
 			}; 
 			variables.add(defaultVariableStore);
 		}
+		
+		Reader text(boolean cached) {
+			if(buffer == null) {
+				var buffer = new StringBuilder();
+				return new Reader() {
+					
+					@Override
+					public int read(char[] cbuf, int off, int len) throws IOException {
+						var r = xtext.read(cbuf, off, len);
+						if(r > -1) {
+							buffer.append(new String(cbuf, off, len));
+						}
+						else {
+							TemplateModel.this.buffer = buffer;
+						}
+						return r;
+					}
+					
+					@Override
+					public void close() throws IOException {
+						buffer.setLength(0);
+						xtext.close();
+					}
+				};
+			}
+			else {
+				return new StringReader(buffer.toString());
+			}
+		}
 
 		@Override
 		public void close() {
 			try {
-				text.close();
+				xtext.close();
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
 			}
@@ -724,7 +755,7 @@ public class Templates {
 			State state = State.START;
 			boolean match = true;
 			boolean capture = false;
-			boolean inElse = false;
+			boolean inElse;
 			int nestDepth = 0;
 			
 			Block(TemplateModel model, VariableExpander expander, Reader reader/* , String scope */) {
@@ -738,6 +769,7 @@ public class Templates {
 				this.reader = reader;
 				this.scope = scope;
 			}
+
 		}
 	
 		private TemplateProcessor(Builder bldr) {
@@ -749,7 +781,7 @@ public class Templates {
 		}
 	
 		public String process(TemplateModel model) {
-			var block = new Block(model, getExpanderForModel(model), model.text);
+			var block = new Block(model, getExpanderForModel(model), model.text(false));
 			read(block);
 			
 			return block.out.toString();
@@ -793,7 +825,8 @@ public class Templates {
 						continue;
 					}
 					
-					var process = !block.capture && ((block.match && !block.inElse) || (block.match && block.inElse));
+					//var process = !block.capture && ((block.match && !block.inElse) || (block.match && block.inElse));
+					var process = !block.capture && block.match;
 	
 					switch (block.state) {
 					case START:
@@ -857,9 +890,6 @@ public class Templates {
 					case T_TAG_NAME:
 						if (ch == '>') {
 							var directive = buf.toString().substring(1).trim();
-							if(directive.startsWith("t:if ") || directive.startsWith("t:list ") || directive.startsWith("t:object ")) {
-								block.nestDepth++;
-							}
 							if(process) {
 								if(processDirective(block, directive)) {
 									buf.setLength(0);
@@ -870,6 +900,9 @@ public class Templates {
 								}
 							}
 							else {
+								if(directive.startsWith("t:if ") || directive.startsWith("t:list ") || directive.startsWith("t:object ")) {
+									block.nestDepth++;
+								}
 								flushBuf(ch, buf, block);
 								block.state = State.START;
 							}
@@ -901,29 +934,21 @@ public class Templates {
 					case T_TAG_END:
 						if(ch == '>') {
 							var directive = buf.toString().substring(4).trim();
-							var isNest = directive.equals("if") || directive.equals("list");
+							var isNest = directive.equals("if") || directive.equals("list") || directive.equals("object");
 							if(isNest) {
 								block.nestDepth--;
 							}
-							try {
-								if(directive.equals(block.scope) && (!isNest || (isNest && block.nestDepth == 0))) {
-									logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
-									return;
-								} else {
-									if(directive.equals(block.scope) && isNest && process) {
-										buf.setLength(0);
-									}
-									else {
-										flushBuf(ch, buf, block);
-									}
-									block.state = State.START;
+							if(directive.equals(block.scope) && (!isNest || (isNest && block.nestDepth == 0))) {
+								logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
+								return;
+							} else {
+								if(directive.equals(block.scope) && isNest && process) {
+									buf.setLength(0);
 								}
-							}
-							finally {
-								if(directive.equals("if") && block.inElse) {
-									block.inElse = false;
-									block.match = !block.match;
+								else {
+									flushBuf(ch, buf, block);
 								}
+								block.state = State.START;
 							}
 						}
 						else {
@@ -932,10 +957,13 @@ public class Templates {
 						break;
 					case T_TAG_LEAF_END:
 						if (ch == '>') {
-							if(process || (block.scope.endsWith("if") && !block.inElse && !block.match)) {
-								var directive = buf.toString().substring(1, buf.length() - 1);
-								while(directive.endsWith("/"))
-									directive = directive.substring(0, directive.length() - 1);
+							var directive = buf.toString().substring(1, buf.length() - 1);
+							while(directive.endsWith("/"))
+								directive = directive.substring(0, directive.length() - 1);
+							
+							var aboutToProcess = !process && directive.equals("t:else"); 
+							
+							if (process || aboutToProcess) {
 								directive = directive.trim();
 								if(processDirective(block, directive)) {
 									buf.setLength(0);
@@ -991,7 +1019,7 @@ public class Templates {
 				if(condition.negate)
 					match = !match;
 				
-				var ifBlock = new Block(block.model, getExpanderForModel(block.model), block.model.text, "if", match);
+				var ifBlock = new Block(block.model, getExpanderForModel(block.model), block.model.text(true), "if", match);
 				ifBlock.nestDepth = 1;
 				
 				read(ifBlock);
@@ -1012,7 +1040,7 @@ public class Templates {
 					return false;
 				} else {
 					var include = includeModel.get();
-					var incBlock = new Block(include, getExpanderForModel(include), include.text);
+					var incBlock = new Block(include, getExpanderForModel(include), include.text(true));
 					read(incBlock);
 					block.out.append(incBlock.out.toString());
 					block.state = State.START;
@@ -1044,7 +1072,7 @@ public class Templates {
 					var was = templ.parent;
 					try {
 						templ.parent = Optional.of(block.model);
-						var listBlock = new Block(templ, getExpanderForModel(templ), templ.text);
+						var listBlock = new Block(templ, getExpanderForModel(templ), templ.text(true));
 						read(listBlock);				
 						block.out.append(listBlock.out.toString());	
 					}
@@ -1081,7 +1109,7 @@ public class Templates {
 							templ.variable("_index", index);
 							templ.variable("_first", index == 0);
 							templ.variable("_last", index == templates.size() - 1);
-							var listBlock = new Block(templ, getExpanderForModel(templ), templ.text);
+							var listBlock = new Block(templ, getExpanderForModel(templ), templ.text(true));
 							read(listBlock);									
 							block.out.append(listBlock.out.toString());
 						}

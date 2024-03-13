@@ -871,6 +871,54 @@ public class TemplatesTest {
 	}
 	
 	@Test
+	public void testTemplateElseWithNestedIfThatsTrue() {
+		Assertions.assertEquals(
+				"\n" +
+				"    \n"  +
+				"        <div class=\"form-floating\">\n" +
+				"            <textarea>Some content with blahg</textarea>\n" +
+				"            <label for=\"12345\" class=\"label-class\">Some label</label>\n" +
+				"        </div>\n" +
+				"	\n" +
+				"\n" +
+				"\n" +
+				"    <div id=\"zzzzzHelp\" class=\"form-text text-muted\">Some help</div>\n\n"
+				, 
+				createParser().process(TemplateModel.ofContent("""
+					<t:if label>
+					    <t:if label.floating>
+					        <div class="form-floating">
+					            <t:include input/>
+					            <label for="${input.id}" class="${label.class}">${label}</label>
+					        </div>
+						<t:else/>
+					        <t:if label.first>
+					            <label for="${input.id}" class="${label.class}">${label}</label>
+					        </t:if>
+					        <t:include input/>
+					        <t:if !label.first>
+					            <label for="${input.id}" class="${label.class}">${label}</label>
+					        </t:if>
+						</t:if>
+					<t:else/>
+					    <t:include input/>
+					</t:if>
+					<t:if help>
+					    <div id="${id}Help" class="form-text text-muted">${help}</div>
+					</t:if>
+				 	 """).
+					variable("label", "Some label").
+					variable("help", "Some help").
+					variable("input.id", "12345").
+					include("input", TemplateModel.ofContent("<textarea>Some content with ${aVar}</textarea>").variable("aVar", "blahg")).
+					variable("id", "zzzzz").
+					condition("has.label", true).
+					condition("label.first", false).
+					condition("label.floating", true).
+					variable("label.class", "label-class")));
+	}
+	
+	@Test
 	public void testTemplateNestedIf3() {
 		Assertions.assertEquals("""
 				<html>
@@ -890,7 +938,7 @@ public class TemplatesTest {
 				<p>Outside</p>
 				<t:if bCondition>
 				<p>Don't show this</p>
-				<t:if bcondition>
+				<t:if bCondition>
 				<p>Or this</p>
 				</t:if>
 				</t:if>
@@ -928,6 +976,31 @@ public class TemplatesTest {
 				</body>
 				</html>
 				 	 """)));
+		
+	}
+	
+	@Test
+	public void testTemplateIncludeMorThanOnce() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				<p>First Time
+				Some content
+				Some content
+				</body>
+				</html>
+				""", 
+				createParser().process(
+		TemplateModel.ofContent("""
+				<html>
+				<body>
+				<p>First Time
+				<t:include templ/>
+				<t:include templ/>
+				</body>
+				</html>
+				 	 """).
+			include("templ", TemplateModel.ofContent("Some content"))));
 		
 	}
 	
