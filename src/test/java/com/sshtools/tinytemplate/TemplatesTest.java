@@ -918,6 +918,79 @@ public class TemplatesTest {
 					variable("label.class", "label-class")));
 	}
 	
+	
+	@Test
+	public void testTemplateThreeDeep() {
+		Assertions.assertEquals(
+				"<div class=\"form-floating input-group\">\n" +
+				"                <textarea>Some content with blahg</textarea>\n" +
+				"                <labelW for=\"12345\" class=\"label-class\">Some label</label>\n" +
+				"            </div>\n" +
+				"		\n" +
+				"	\n" +
+				"\n" +
+				"\n" +
+				"    <div id=\"zzzzzHelp\" class=\"form-text text-muted\">Some help</div>", 
+				createParser().process(TemplateModel.ofContent("""
+					<t:if label>
+					    <t:if label.floating>
+							<t:if input.group>
+					            <div class="form-floating input-group">
+					                <t:include input/>
+					                <labelW for="${input.id}" class="${label.class}">${label}</label>
+					            </div>
+							<t:else/>
+						        <div class="form-floating">
+						            <t:include input/>
+						            <labelR for="${input.id}" class="${label.class}">${label}</label>
+						        </div>
+							</t:if>
+						<t:else/>
+						    <t:if input.group>
+					            <div class="input-group">
+						            <t:if label.first>
+							            <labelX for="${input.id}" class="${label.class}">${label}</label>
+							        </t:if>
+							        <t:include input/>
+							        <t:if !label.first>
+							            <labelY for="${input.id}" class="${label.class}">${label}</label>
+							        </t:if>
+					            </div>
+					        <t:else/>
+						        <t:if label.first>
+						            <labelZ for="${input.id}" class="${label.class}">${label}</label>
+						        </t:if>
+						        <t:include input/>
+						        <t:if !label.first>
+						            <labelQ for="${input.id}" class="${label.class}">${label}</label>
+						        </t:if>
+					        </t:if>
+						</t:if>
+					<t:else/>
+					    <t:if input.group>
+					        <div class="input-group">
+					            <t:include input/>
+					        </div>
+					    <t:else/>
+					        <t:include input/>
+					    </t:if>
+					</t:if>
+					<t:if help>
+					    <div id="${id}Help" class="form-text text-muted">${help}</div>
+					</t:if>
+				 	 """).
+					variable("label", "Some label").
+					variable("help", "Some help").
+					variable("input.id", "12345").
+					include("input", TemplateModel.ofContent("<textarea>Some content with ${aVar}</textarea>").variable("aVar", "blahg")).
+					variable("id", "zzzzz").
+					condition("has.label", true).
+					condition("label.first", false).
+					condition("input.group", true).
+					condition("label.floating", true).
+					variable("label.class", "label-class")).trim());
+	}
+	
 	@Test
 	public void testTemplateNestedIf3() {
 		Assertions.assertEquals("""
@@ -1042,7 +1115,21 @@ public class TemplatesTest {
 	}
 	
 	private TemplateProcessor createParser() {
-		return new TemplateProcessor.Builder().build();
+		return new TemplateProcessor.Builder().
+				withLogger(new Logger() {
+					
+					@Override
+					public void warning(String message, Object... args) {
+						System.out.println(MessageFormat.format("[WARN] " + message, args));
+						
+					}
+					
+					@Override
+					public void debug(String message, Object... args) {
+						System.out.println(MessageFormat.format("[DEBUG] " + message, args));						
+					}
+				}).
+				build();
 	}
 	
 	public static Map<String, ?> createVars() {

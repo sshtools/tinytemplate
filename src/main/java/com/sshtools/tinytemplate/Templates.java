@@ -751,6 +751,7 @@ public class Templates {
 			final VariableExpander expander;
 			final Reader reader;
 			final String scope;
+			final int depth;
 			
 			State state = State.START;
 			boolean match = true;
@@ -758,17 +759,25 @@ public class Templates {
 			boolean inElse;
 			int nestDepth = 0;
 			
-			Block(TemplateModel model, VariableExpander expander, Reader reader/* , String scope */) {
-				this(model, expander, reader, null, true);
+			Block(int depth, TemplateModel model, VariableExpander expander, Reader reader/* , String scope */) {
+				this(depth, model, expander, reader, null, true);
 			}
 			
-			Block(TemplateModel model, VariableExpander expander, Reader reader, String scope, boolean match) {
+			Block(int depth, TemplateModel model, VariableExpander expander, Reader reader, String scope, boolean match) {
 				this.model = model;
+				this.depth = depth;
 				this.match = match;
 				this.expander = expander;
 				this.reader = reader;
 				this.scope = scope;
 			}
+
+			@Override
+			public String toString() {
+				return "Block [scope=" + scope + ", depth=" + depth + ", state=" + state + ", match=" + match
+						+ ", capture=" + capture + ", inElse=" + inElse + ", nestDepth=" + nestDepth + "]";
+			}
+			
 
 		}
 	
@@ -781,7 +790,7 @@ public class Templates {
 		}
 	
 		public String process(TemplateModel model) {
-			var block = new Block(model, getExpanderForModel(model), model.text(false));
+			var block = new Block(0, model, getExpanderForModel(model), model.text(false));
 			read(block);
 			
 			return block.out.toString();
@@ -802,11 +811,18 @@ public class Templates {
 							};
 						}).collect(Collectors.toList())).withVariableSupplier(model::variable)
 						.withConditionEvaluator(cond -> conditionOrVariable(model, cond, "").orElseGet(() -> {
-							logger.ifPresent(l -> l.debug("Missing condition {0}, assuming {1}", cond, false));
+							logger.ifPresent(l -> l.debug(formatDebug(null, "Missing condition {0}, assuming {1}"), cond, false));
 							return false;
 						})).build();
 			});
 			return exp;
+		}
+		
+		private String formatDebug(Block block, String message) {
+			if(block == null || block.depth == 0)
+				return message;
+			else
+				return String.format("%" + (block.depth * 4) + "s%s", "", message);
 		}
 	
 		private void read(Block block) {
@@ -825,7 +841,6 @@ public class Templates {
 						continue;
 					}
 					
-					//var process = !block.capture && ((block.match && !block.inElse) || (block.match && block.inElse));
 					var process = !block.capture && block.match;
 	
 					switch (block.state) {
@@ -890,6 +905,10 @@ public class Templates {
 					case T_TAG_NAME:
 						if (ch == '>') {
 							var directive = buf.toString().substring(1).trim();
+							
+							if(logger.isPresent()) 
+								logger.get().debug(formatDebug(block, "Tag found {0}. Process {1}"), directive, process);
+							
 							if(process) {
 								if(processDirective(block, directive)) {
 									buf.setLength(0);
@@ -938,8 +957,12 @@ public class Templates {
 							if(isNest) {
 								block.nestDepth--;
 							}
+														
+							if(logger.isPresent()) 
+								logger.get().debug(formatDebug(block, "Tag end {0}. Process {1}"), directive, process);
+							
 							if(directive.equals(block.scope) && (!isNest || (isNest && block.nestDepth == 0))) {
-								logger.ifPresent(lg -> lg.debug("Leaving scope {0}", block.scope));
+								logger.ifPresent(lg -> lg.debug(formatDebug(block, "Leaving scope {0}"), block.scope));
 								return;
 							} else {
 								if(directive.equals(block.scope) && isNest && process) {
@@ -962,10 +985,17 @@ public class Templates {
 								directive = directive.substring(0, directive.length() - 1);
 							
 							var aboutToProcess = !process && directive.equals("t:else"); 
+							var wasInElse = block.inElse;
+							
+							if(logger.isPresent()) 
+								logger.get().debug(formatDebug(block, "Leaf end {0}. Process {1}, About to Process {2}. In Else {3}. Match {4}"), directive, process, aboutToProcess, block.inElse, block.match);
 							
 							if (process || aboutToProcess) {
 								directive = directive.trim();
 								if(processDirective(block, directive)) {
+									if(aboutToProcess && !process && wasInElse) {
+										block.match = false;
+									}
 									buf.setLength(0);
 								}
 								else {
@@ -998,6 +1028,10 @@ public class Templates {
 			var dir = ( spc == -1 ? directive : directive.substring(0, spc)).trim();
 			var var = ( spc == -1 ? null : directive.substring(spc + 1).trim());
 			
+			if(logger.isPresent()) 
+				logger.get().debug(formatDebug(block, "Process directive {0}. Var {1}"), dir, var);
+							
+			
 			if(dir.equals("t:if")) {
 				
 				var condition = Condition.parse(var);
@@ -1019,7 +1053,10 @@ public class Templates {
 				if(condition.negate)
 					match = !match;
 				
-				var ifBlock = new Block(block.model, getExpanderForModel(block.model), block.model.text(true), "if", match);
+				if(logger.isPresent()) 
+					logger.get().debug(formatDebug(block, "Condition {0} evaluates to {1}"), var, match);
+				
+				var ifBlock = new Block(block.depth + 1, block.model, getExpanderForModel(block.model), block.model.text(true), "if", match);
 				ifBlock.nestDepth = 1;
 				
 				read(ifBlock);
@@ -1040,7 +1077,8 @@ public class Templates {
 					return false;
 				} else {
 					var include = includeModel.get();
-					var incBlock = new Block(include, getExpanderForModel(include), include.text(true));
+					var incBlock = new Block(block.depth + 1,include, getExpanderForModel(include), include.text(true));
+					logger.ifPresent(l -> l.debug(formatDebug(incBlock, "** Including template {0} **"), var));
 					read(incBlock);
 					block.out.append(incBlock.out.toString());
 					block.state = State.START;
@@ -1063,7 +1101,7 @@ public class Templates {
 					return false;
 				}
 				else {
-					var templBlock = new Block(block.model, block.expander, block.reader, "object", true);
+					var templBlock = new Block(block.depth + 1,block.model, block.expander, block.reader, "object", true);
 					templBlock.nestDepth = 1;
 					templBlock.capture = true;
 					read(templBlock);
@@ -1072,7 +1110,7 @@ public class Templates {
 					var was = templ.parent;
 					try {
 						templ.parent = Optional.of(block.model);
-						var listBlock = new Block(templ, getExpanderForModel(templ), templ.text(true));
+						var listBlock = new Block(block.depth + 1,templ, getExpanderForModel(templ), templ.text(true));
 						read(listBlock);				
 						block.out.append(listBlock.out.toString());	
 					}
@@ -1095,7 +1133,7 @@ public class Templates {
 				}
 				else {
 					/* Temporary block to read all the content we must repeat */
-					var tempBlock = new Block(block.model, block.expander, block.reader, "list", true);
+					var tempBlock = new Block(block.depth + 1,block.model, block.expander, block.reader, "list", true);
 					tempBlock.nestDepth = 1;
 					tempBlock.capture = true;
 					read(tempBlock);
@@ -1109,7 +1147,7 @@ public class Templates {
 							templ.variable("_index", index);
 							templ.variable("_first", index == 0);
 							templ.variable("_last", index == templates.size() - 1);
-							var listBlock = new Block(templ, getExpanderForModel(templ), templ.text(true));
+							var listBlock = new Block(block.depth + 1,templ, getExpanderForModel(templ), templ.text(true));
 							read(listBlock);									
 							block.out.append(listBlock.out.toString());
 						}
