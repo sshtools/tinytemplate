@@ -1004,7 +1004,7 @@ public class Templates {
 							if(logger.isPresent()) 
 								logger.get().debug(formatDebug(block, "Leaf end {0}. Process {1}, Match {2}. Nest Depth {3}"), directive, process, block.match, block.nestDepth);
 							
-							if(directive.equals("t:else")) {
+							if(!block.capture && directive.equals("t:else")) {
 								var parentMatch = block.nestDepth > 1 ? block.match : block.parent == null || block.parent.match;
 								var newMatch = !block.match && parentMatch;
 								if(logger.isPresent()) 
@@ -1143,7 +1143,7 @@ public class Templates {
 					var was = templ.parent;
 					try {
 						templ.parent = Optional.of(block.model);
-						var listBlock = new Block(block, templ,getExpanderForModel(templ), templ.text(true));
+						var listBlock = new Block(block, templ,getExpanderForModel(templ), templ.text(true), "object", true);
 						read(listBlock);				
 						block.out.append(listBlock.out.toString());	
 					}

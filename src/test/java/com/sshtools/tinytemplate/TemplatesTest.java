@@ -1217,6 +1217,69 @@ public class TemplatesTest {
 	}
 	
 	@Test
+	public void testTemplateObjectInCondition() {
+		Assertions.assertEquals("""
+				<p>Some text</p>
+
+
+				<p>Name: Joe B</p>
+				
+				
+				<p>Some other text</p>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<p>Some text</p>
+				<t:if aPerson>
+				<t:object aPerson>
+				<p>Name: ${name}</p>
+				</t:object>
+				</t:if>
+				<p>Some other text</p>
+				 	 """).
+				object("aPerson", (c) ->
+					TemplateModel.ofContent(c).
+						variable("name", "Joe B")
+				)));
+		
+	}
+	
+	@Test
+	public void testTemplateFlaseConditionInObjectInTrueCondition() {
+		Assertions.assertEquals("""
+				<p>Some text</p>
+
+
+				<p>Name: Joe B</p>
+				
+				<p>No Age</p>
+				
+				 
+				 
+				<p>Some other text</p>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<p>Some text</p>
+				<t:if aPerson>
+				<t:object aPerson>
+				<p>Name: ${name}</p>
+				<t:if aAge>
+				<p>Age: ${aAge}</p>
+				<t:else/>
+				<p>No Age</p>
+				</t:if>
+				</t:object>
+				</t:if>
+				<p>Some other text</p>
+				 	 """).
+				object("aPerson", (c) ->
+					TemplateModel.ofContent(c).
+						variable("name", "Joe B").
+						variable("aAge", "")
+				)));
+		
+	}
+	
+	@Test
 	public void testTemplateObject() {
 		Assertions.assertEquals("""
 				<html>
