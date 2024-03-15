@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -406,6 +407,7 @@ public class Templates {
 		
 		private final Reader xtext;
 		private StringBuilder buffer = null;
+		private Optional<Consumer<String>> instruction = Optional.empty();
 
 		public final static Object[] NO_ARGS = new Object[0];
 		
@@ -485,6 +487,11 @@ public class Templates {
 
 		public List<ResourceBundle> bundles() {
 			return bundles.stream().map(b -> b.apply(locale())).collect(Collectors.toList());
+		}
+		
+		public TemplateModel instruction(Consumer<String> instruction) {
+			this.instruction = Optional.of(instruction);
+			return this;
 		}
 
 		public TemplateModel bundles(Collection<ResourceBundle> bundles) {
@@ -1014,6 +1021,11 @@ public class Templates {
 								block.state = State.START;
 								buf.setLength(0);
 							}
+							else if(directive.startsWith("t:instruct ")) {
+								instruction(block, directive.substring(11));
+								block.state = State.START;
+								buf.setLength(0);
+							}
 							else if (process) {
 								if(processDirective(block, directive)) {
 									buf.setLength(0);
@@ -1057,6 +1069,16 @@ public class Templates {
 				}
 			} catch (IOException ioe) {
 				throw new UncheckedIOException(ioe);
+			}
+		}
+		
+		private void instruction(Block block, String instruction) {
+			logger.ifPresent(l -> l.debug("Processing instruction ''{0}''", instruction));
+			if(instruction.equals("reset")) {
+				block.out.setLength(0);
+			}
+			else {
+				block.model.instruction.ifPresent(ip -> ip.accept(instruction));
 			}
 		}
 		

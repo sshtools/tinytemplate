@@ -13,18 +13,18 @@ A lightweight Java string template engine. While it is intended to be used with 
 will work with any text content. While small, it has some unique features and is fast and 
 flexible.
 
-It requires just 5 HTML-like tags, and a bash-like variable expression syntax.
+It requires just 6 HTML-like tags, and a bash-like variable expression syntax.
 
 ## Status
 
-Feature complete. Just some test coverage to complete and addition of Javadoc.
+Feature complete. Just some test coverage to complete and more documentation.
 
 ## Features
 
  * No dependencies, JPMS compliant, Graal Native Image friendly
  * Fast. See Design Choices.
  * Simple Java. Public API consists of just 2 main classes, `TemplateModel` and `TemplateProcessor`.
- * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>`, `<t:object>` and `<t:list>`. Bash like variable such as `${myVar}`.
+ * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>`, `<t:object>`, `<t:list>` and `<t:instruct/>`. Bash like variable such as `${myVar}`.
  * Internationalisation features.  
  
 ## Design Choices
@@ -136,7 +136,9 @@ key1=Some Text
 key2=Some other text with an argument. Random number is {0}
 ```
 
-## Variable Expansion
+## Usage
+
+### Variable Expansion
 
 TinyTemplate supports a sort-of-like-Bash syntax for variable expansion. The exact
 behaviour of each *string* replacement depends on a *parameter* and an *operator*.
@@ -150,7 +152,7 @@ Most patterns evaluate a named *parameter*. This can be any *condition*, *variab
  * Evaluates to `true` when a *variable* of the same name exists and is not an empty string.
  * Evaluates to `true` when any other type exists.
 
-### ${parameter}
+#### ${parameter}
 
 Simplest type. Just always substitute with with value of a *variable* from the model.
 
@@ -158,7 +160,7 @@ Simplest type. Just always substitute with with value of a *variable* from the m
 ${todaysDate}
 ```
 
-### ${parameter:?string:otherString}
+#### ${parameter:?string:otherString}
 
 If *parameter* evaluates to false as either a *variable* or *condition*, the expansion of *otherString* 
 is substituted. Otherwise, the expansion of *string* is substituted.
@@ -167,7 +169,7 @@ is substituted. Otherwise, the expansion of *string* is substituted.
 ${isPM:?Post Meridiem:Ante Meridiem noon}
 ``` 
 
-### ${parameter:-string}
+#### ${parameter:-string}
 
 If *parameter* evaluates to false as either a *variable* or *condition*, the expansion of *string* is substituted.
 Otherwise, the value of *parameter* is substituted.
@@ -176,7 +178,7 @@ Otherwise, the value of *parameter* is substituted.
 ${location:-Unknown Location}
 ```
 
-### ${parameter:+string}
+#### ${parameter:+string}
 
 If *parameter* evaluates to false as either a *variable* or *condition*, an empty string is substituted, otherwise 
 the expansion of *string* is substituted.
@@ -185,10 +187,117 @@ the expansion of *string* is substituted.
 <input type="checked" ${selected:+checked} name="selected">
 ```
 
-### ${parameter:=string}
+#### ${parameter:=string}
 
 If *parameter* evaluates to false as either a *variable* or *condition*, the expansion of word is substituted, otherwise an empty string is substituted.
 
 ```
  <button type="button" ${clipboard-empty:=disabled} id="paste">Paste</button>
 ```
+
+### Tags
+
+TinyTemplates primary use is with HTML and fragments of HTML. Tags by default use an *XML* syntax so as to
+work well with code editors. Each tag starts with `t:`, so we suggest that you start all documents 
+with the following header .. 
+
+```html
+<html lang="en" xmlns:t="https://jadaptive.com/t">
+```
+
+.. and all *fragments* of HTML with the following.
+
+```html
+<html lang="en" xmlns:t="https://jadaptive.com/t">
+<t:instruct reset/>
+```   
+
+In both cases, the first line introduces the `t` namespace, so subsequent tags that appear in your
+document will not be marked as syntax errors by your editor.
+
+The 2nd line used with fragments, will cause TinyTemplate to reset it's buffer, and forget any output
+so far collected. In effect, it will remove the first line. 
+
+#### If / Else
+
+Allows conditional inclusion of one or two blocks on content. Every condition in the template is
+assigned a *name*, which will be tied to a piece of Java code which produces whether it evaluates to
+`true`.
+
+```html
+<t:if feelingFriendly>
+    <p>Hello World!</p>
+</t:if>
+``` 
+
+And the Java.
+
+```java
+model.condition("feelingFriendly", true);
+```
+
+You can also use `<t:else/>` to provide content that will be rendered when the condition evaluates
+to `false`.
+
+```html
+<t:if feelingFriendly>
+    <p>Hello World!</p>
+<t:else/>
+    <p>Go away world!</p>
+</t:if>
+``` 
+
+And the Java.
+
+```java
+model.condition("feelingFriendly", false);
+```
+
+If no such named condition exists, then checks will be made to see if a *Variable* with the same name
+exists. If it doesn't exist, the condition will evaluate as `false`. If it does exist however, then  
+it's result will depend on the value and it's type. 
+
+ * `null` evaluates as false.
+ * Empty string `""` evaluates as false.
+ * Any number with a zero value evaluates as false.
+ * All other values evaluate as true.
+ 
+If there is no such condition, and no such variable, then checks will be made to see if any such 
+*Include* or *Object* exists.
+
+```html
+<t:if me>
+    <t:object me>
+        <p>Name : ${name}</p>
+        <p>Age : ${age}</p>
+        <p>Location : ${location}</p>
+    </t:object>
+<t:else/>
+    <p>I don't know who I am</p>
+</t:if>
+```  
+
+```java
+if(me != null) {
+    model.object("me", content -> Template.ofContent(content).
+                    variable("name", "Joe B").
+                    variable("age", 44).
+                    variable("location", "London"));
+}
+```
+
+#### Include
+
+TODO
+
+#### List
+
+TODO
+
+#### Object
+
+TODO
+
+#### Instruct
+
+TODO
