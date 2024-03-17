@@ -745,7 +745,9 @@ public class Templates {
 			}
 	
 			private static Condition parse(String cond) {
-				if(cond.startsWith("!"))
+				if(cond.startsWith("not"))
+					return new Condition(true, cond.substring(4));
+				else if(cond.startsWith("!"))
 					return new Condition(true, cond.substring(1));
 				else
 					return new Condition(false, cond);

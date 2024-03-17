@@ -253,6 +253,14 @@ And the Java.
 model.condition("feelingFriendly", false);
 ```
 
+Conditions can be negated by prefixing the name with either a  `!` or the more XML syntax friendly `not`. 
+
+```html
+<t:if !feelingFriendly>
+    <p>Humbug!</p>
+</t:if>
+```
+
 If no such named condition exists, then checks will be made to see if a *Variable* with the same name
 exists. If it doesn't exist, the condition will evaluate as `false`. If it does exist however, then  
 it's result will depend on the value and it's type. 
