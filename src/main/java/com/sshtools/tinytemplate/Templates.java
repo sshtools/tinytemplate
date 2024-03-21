@@ -344,8 +344,24 @@ public class Templates {
 	public final static Logger defaultStdOutLogger() {
 		return LazyDefaultStdOutLogger.DEFAULT;
 	}
+	
+	public final static class CloseableTemplateModel extends TemplateModel implements Closeable {
 
-	public final static class TemplateModel implements Closeable {
+		public CloseableTemplateModel(Reader reader) {
+			super(reader);
+		}
+		
+		@Override
+		public void close() {
+			try {
+				xtext.close();
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}
+	}
+
+	public static class TemplateModel {
 
 		public static TemplateModel ofPath(Path path) {
 			try {
@@ -364,20 +380,24 @@ public class Templates {
 			return new TemplateModel(new StringReader(content));
 		}
 
-		public static TemplateModel ofResource(String resource) {
+		public static CloseableTemplateModel ofReader(Reader resource) {
+			return new CloseableTemplateModel(resource);
+		}
+
+		public static CloseableTemplateModel ofResource(String resource) {
 			return ofResource(resource, Optional.empty());
 		}
 
-		public static TemplateModel ofResource(String resource, ClassLoader loader) {
+		public static CloseableTemplateModel ofResource(String resource, ClassLoader loader) {
 			return ofResource(resource, Optional.of(loader));
 		}
 
-		public static TemplateModel ofResource(Class<?> packageClass, String childResource) {
+		public static CloseableTemplateModel ofResource(Class<?> packageClass, String childResource) {
 			return ofResource(packageClass.getPackage().getName().replace('.', '/') + "/" + childResource,
 					Optional.of(packageClass.getClassLoader()));
 		}
 
-		public static TemplateModel ofResource(String resource, Optional<ClassLoader> loader) {
+		public static CloseableTemplateModel ofResource(String resource, Optional<ClassLoader> loader) {
 			// Read resource content
 			var ldr = loader.orElseGet(() -> Templates.class.getClassLoader());
 			try {
@@ -387,7 +407,7 @@ public class Templates {
 					throw new FileNotFoundException(resource);
 				}
 				var in = res.openStream();
-				return new TemplateModel(new InputStreamReader(in));
+				return new CloseableTemplateModel(new InputStreamReader(in));
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
 			}
@@ -405,7 +425,8 @@ public class Templates {
 		Optional<Supplier<Locale>> locale = Optional.empty();
 		Optional<TemplateModel> parent = Optional.empty();
 		
-		private final Reader xtext;
+		protected final Reader xtext;
+		
 		private StringBuilder buffer = null;
 		private Optional<Consumer<String>> instruction = Optional.empty();
 
@@ -456,15 +477,6 @@ public class Templates {
 			}
 			else {
 				return new StringReader(buffer.toString());
-			}
-		}
-
-		@Override
-		public void close() {
-			try {
-				xtext.close();
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
 			}
 		}
 
