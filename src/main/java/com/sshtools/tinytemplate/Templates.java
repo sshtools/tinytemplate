@@ -363,16 +363,16 @@ public class Templates {
 
 	public static class TemplateModel {
 
-		public static TemplateModel ofPath(Path path) {
+		public static CloseableTemplateModel ofPath(Path path) {
 			try {
-				return new TemplateModel(Files.newBufferedReader(path));
+				return new CloseableTemplateModel(Files.newBufferedReader(path));
 			}
 			catch(IOException ioe) {
 				throw new UncheckedIOException(ioe);
 			}
 		}
 		
-		public static TemplateModel ofFile(File file) {
+		public static CloseableTemplateModel ofFile(File file) {
 			return ofPath(file.toPath());
 		}
 
