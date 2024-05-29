@@ -114,7 +114,7 @@ public class Example1 {
                             condition("friday", () -> day.equals("Fri"))
                     ).toList()
                 )).
-                object("me", content -> Template.ofContent(content).
+                object("me", content -> TemplateModel.ofContent(content).
                     variable("name", "Joe B").
                     variable("age", 44).
                     variable("location", "London"))
@@ -268,6 +268,7 @@ it's result will depend on the value and it's type.
  * `null` evaluates as false.
  * Empty string `""` evaluates as false.
  * Any number with a zero value evaluates as false.
+ * An empty list evaluates as false, a list with any elements evaluates as true.
  * All other values evaluate as true.
  
 If there is no such condition, and no such variable, then checks will be made to see if any such 
@@ -287,7 +288,7 @@ If there is no such condition, and no such variable, then checks will be made to
 
 ```java
 if(me != null) {
-    model.object("me", content -> Template.ofContent(content).
+    model.object("me", content -> TemplateModel.ofContent(content).
                     variable("name", "Joe B").
                     variable("age", 44).
                     variable("location", "London"));
@@ -300,7 +301,60 @@ TODO
 
 #### List
 
-TODO
+Lists allow blocks of content to be repeated, with different values for each row. Each list is assigned a *name*,
+which ties it to the Java code that generates this list.
+
+Each row of a list itself is a `TemplateModel`, which should be constructed from the `content` that is passed to 
+to it. Every row of course can then contain any other *TinyTemplate* construct such as variables, includes, further
+nested lists and so on.
+
+For example,
+
+```html
+<h1>A list of ${number} people</h1>
+<ul>
+	<t:list people>
+		<li>${_number} - ${name}, ${age} - ${locale}</li>
+	</t:list>
+</ul>
+```
+
+```java
+
+public record Person(String name, int age, Locale locale) {}
+
+// ...
+
+var people = Set.of(
+	new Person("Joe B", 44, Locale.ENGLISH),
+	new Person("Maria Z", 27, Locale.GERMAN),
+	new Person("Steve P", 31, Locale.US),
+);
+ 
+var model = TemplateModel.ofContent(html).
+	variable("number", people.size()).
+	list("people", (content) ->
+		people.stream().map(person -> TemplateModel.ofContent(content).
+			variable("name", person::name).
+			variable("age", person::age).
+			variable("locale", person.locale()::getDisplayName).
+		).toList()
+	);
+
+```
+
+Lists make some default variables to each row. 
+
+ * `_size`, the size of the list.
+ * `_index`, the zero-based index of the current row.
+ * `_number`, the number of the current row (i.e. `_index + 1`).
+ 
+And some conditions.
+ 
+ * `_first`, if the current row is the first row, will be `true`.
+ * `_last`, if the current row is the last row, will be `true`.
+ * `_odd`, if the index of the current row is an odd number, will be `true`.
+ * `_even`, if the index of the current row is an even number, will be `true`.
 
 #### Object
 

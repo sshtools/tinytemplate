@@ -1213,9 +1213,13 @@ public class Templates {
 						var was = templ.parent;
 						templ.parent = Optional.of(block.model);
 						try {
+							templ.variable("_size", templates.size());
 							templ.variable("_index", index);
-							templ.variable("_first", index == 0);
-							templ.variable("_last", index == templates.size() - 1);
+							templ.variable("_number", index + 1);
+							templ.condition("_even", index % 2 == 0);
+							templ.condition("_odd", index % 2 == 1);
+							templ.condition("_first", index == 0);
+							templ.condition("_last", index == templates.size() - 1);
 							var listBlock = new Block(block, templ,getExpanderForModel(templ), templ.text(true));
 							read(listBlock);									
 							block.out.append(listBlock.out.toString());
