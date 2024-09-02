@@ -901,7 +901,7 @@ public class Templates {
 						// TODO nested variables
 						if (!esc && ch == '}') {
 							buf.append(ch);
-							block.out.append(block.expander.process(buf.toString()));
+							expandToBuffer(block, buf);
 							buf.setLength(0);
 							block.state = State.START;
 						} else {
@@ -1084,6 +1084,23 @@ public class Templates {
 			} catch (IOException ioe) {
 				throw new UncheckedIOException(ioe);
 			}
+		}
+
+		private void expandToBuffer(Block block, StringBuilder buf) {
+			IllegalArgumentException exception = null;
+			StringBuilder oblock = block.out;
+			while(block != null) {
+				try {
+					oblock.append(block.expander.process(buf.toString()));
+					return;
+				}
+				catch(IllegalArgumentException iae) {
+					block = block.parent;
+					if(exception == null)
+						exception = iae;
+				}
+			}
+			throw exception;
 		}
 		
 		private void instruction(Block block, String instruction) {

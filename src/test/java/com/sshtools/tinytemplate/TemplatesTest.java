@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -329,6 +330,114 @@ public class TemplatesTest {
 				</html>
 				 	 """).
 					variable("aVariable", "Some value")));
+	}
+	
+	@Test
+	public void testTemplateParentVariableInsideIf() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				<span>Some other value</span>
+				
+				<p>Show this Some value</p>
+				<span>Some other value</span>
+				
+				</body>
+				</html>
+				""".trim(), 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<span>${someVar}</span>
+				<t:if aVariable>
+				<p>Show this ${aVariable}</p>
+				<span>${someVar}</span>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					variable("someVar", "Some other value").
+					variable("aVariable", "Some value")).trim());
+	}
+	
+	@Test
+	public void testTemplateParentVariableInsideList() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				<span>Some other value</span>
+				
+				<span>Some other value</span>
+				<span>Val 1</span>
+				
+				<span>Some other value</span>
+				<span>Val 2</span>
+				
+				</body>
+				</html>
+				""".trim(), 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<span>${someVar}</span>
+				<t:list aList>
+				<span>${someVar}</span>
+				<span>${someInnerVar}</span>
+				</t:list>
+				</body>
+				</html>
+				 	 """).
+					variable("someVar", "Some other value").
+					list("aList", (cnt) -> {
+						return Arrays.asList(
+								TemplateModel.ofContent(cnt).
+									variable("someInnerVar", "Val 1"),
+								TemplateModel.ofContent(cnt).
+									variable("someInnerVar", "Val 2")
+						);
+					})).trim());
+	}
+	
+	@Test
+	public void testTemplateParentVariableInsideListInsideIf() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				<span>Some other value</span>
+				
+				
+				<span>Some other value</span>
+				<span>Val 1</span>
+				
+				<span>Some other value</span>
+				<span>Val 2</span>
+				
+				
+				</body>
+				</html>
+				""".trim(), 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<span>${someVar}</span>
+				<t:if aList>
+				<t:list aList>
+				<span>${someVar}</span>
+				<span>${someInnerVar}</span>
+				</t:list>
+				</t:if>
+				</body>
+				</html>
+				 	 """).
+					variable("someVar", "Some other value").
+					list("aList", (cnt) -> {
+						return Arrays.asList(
+								TemplateModel.ofContent(cnt).
+									variable("someInnerVar", "Val 1"),
+								TemplateModel.ofContent(cnt).
+									variable("someInnerVar", "Val 2")
+						);
+					})).trim());
 	}
 	
 	@Test
