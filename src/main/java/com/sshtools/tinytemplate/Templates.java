@@ -53,6 +53,8 @@ import java.util.stream.Stream;
 
 public class Templates {
 	
+	private final static List<String> EMPTY_ARGS = Collections.emptyList();
+	
 	@FunctionalInterface
 	public interface VariableStore extends Function<String, Object> {
 		default boolean contains(String key) {
@@ -69,6 +71,12 @@ public class Templates {
 			private Function<String, Boolean> conditionEvaluator;
 			private Optional<Logger> logger = Optional.of(defaultStdOutLogger());
 			private Function<String, ?> variableSupplier;
+			private char argumentSeparator = ',';
+
+			public Builder withArgumentSeparator(char argumentSeparator) {
+				this.argumentSeparator = argumentSeparator;
+				return this;
+			}
 
 			public Builder withNullsAsNull() {
 				return withNullsAreEmpty(false);
@@ -161,12 +169,14 @@ public class Templates {
 		private final Function<String, Boolean> conditionEvaluator;
 		private final Pattern varPattern;
 		private final Pattern ternPattern;
+		private final char argumentSeparator;
 
 		private VariableExpander(Builder bldr) {
 			exprPattern = Pattern.compile(REGEXP);
 			varPattern = Pattern.compile(VAR_REGEXP);
 			ternPattern = Pattern.compile(TERN_REGEXP);
 
+			this.argumentSeparator = bldr.argumentSeparator;
 			this.bundles = Collections.unmodifiableSet(new LinkedHashSet<>(bldr.bundles));
 			this.logger = bldr.logger;
 			this.conditionEvaluator = bldr.conditionEvaluator;
@@ -200,9 +210,25 @@ public class Templates {
 				if (intro.equals("%")) {
 					/* i18n */
 					var word = mtchr.group(2);
+					var idx = input.indexOf(' ');
+					var args = idx == -1 ? new String[0] : splitArguments(input.substring(idx + 1));
+					if(args.length > 0) {
+						for(int i = 0 ; i < args.length ; i++) {
+							try {
+								args[i] = expand(args[i]);
+							}
+							catch(IllegalArgumentException iae) {
+								args[i] = args[i];
+							}
+						}
+					}
 					for (var bundle : bundles) {
 						try {
-							return bundle.get().getString(word);
+							if(args.length == 0)
+								return bundle.get().getString(word);
+							else {
+								return MessageFormat.format(bundle.get().getString(word), (Object[])args);
+							}
 						} catch (MissingResourceException mre) {
 						}
 					}
@@ -282,6 +308,29 @@ public class Templates {
 			}
 
 			return input;
+		}
+
+		private String[] splitArguments(String input) {
+			var esc = false;
+			var l = new ArrayList<String>();
+			var b = new StringBuilder();
+			for(var ch : input.toCharArray()) {
+				if(ch == '\\' && !esc) {
+					esc = true;
+				}
+				else if(ch == argumentSeparator && !esc)  {
+					l.add(b.toString());
+					b.setLength(0);
+				}
+				else {
+					b.append(ch);
+					esc = false;
+				}
+			}
+			if(b.length() > 0) {
+				l.add(b.toString());
+			}
+			return l.toArray(new String[0]);
 		}
 
 		private Object supplyVal(String param) {
@@ -779,6 +828,7 @@ public class Templates {
 			boolean capture = false;
 			int nestDepth = 0;
 			String var;
+			int braceDepth = 0;
 			
 			Block(Block parent, TemplateModel model, VariableExpander expander, Reader reader/* , String scope */) {
 				this(parent, model, expander, reader, null, true);
@@ -892,19 +942,28 @@ public class Templates {
 					case VAR_START:
 						if (process && ch == '{') {
 							block.state = State.VAR_BRACE;
+							block.braceDepth++;
 							buf.append(ch);
 						} else {
 							flushBuf(ch, buf, block);
 						}
 						break;
 					case VAR_BRACE:
-						// TODO nested variables
 						if (!esc && ch == '}') {
-							buf.append(ch);
-							expandToBuffer(block, buf);
-							buf.setLength(0);
-							block.state = State.START;
+							if(block.braceDepth == 1) {
+								buf.append(ch);
+								expandToBuffer(block, buf);
+								buf.setLength(0);
+								block.state = State.START;
+							}
+							else {
+								buf.append(ch);
+							}
+							block.braceDepth--;
 						} else {
+							if(!esc && ch == '{') {
+								block.braceDepth++;
+							}
 							buf.append(ch);
 						}
 						break;
@@ -1089,9 +1148,11 @@ public class Templates {
 		private void expandToBuffer(Block block, StringBuilder buf) {
 			IllegalArgumentException exception = null;
 			StringBuilder oblock = block.out;
+			var varStr = buf.toString();
+			varStr = varStr.substring(2, varStr.length() - 1);
 			while(block != null) {
 				try {
-					oblock.append(block.expander.process(buf.toString()));
+					oblock.append(block.expander.expand(varStr));
 					return;
 				}
 				catch(IllegalArgumentException iae) {

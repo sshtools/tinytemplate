@@ -195,6 +195,73 @@ If *parameter* evaluates to false as either a *variable* or *condition*, the exp
  <button type="button" ${clipboard-empty:=disabled} id="paste">Paste</button>
 ```
 
+### Internationalisation
+
+#### In A Template
+
+A special form of Variable Expansion is used for internationalisation in a template. This supports arguments, as well as nested variables as arguments.
+
+You must still set a `ResourceBundle` on the model for I18n keys in a template to work.
+
+```java
+var model = TemplateModel.ofContent(
+	"""
+	<p>${%someKey}</p>
+	""").
+	bundle(MyClass.class);
+```
+
+And `MyClass.properties` ..
+
+```
+someKey=Some internationalised text
+```
+
+##### Basic
+
+The simplest syntax is `${%someKey}`, which will replace `someKey` with whatever the value is in the supplied `RessourceBundle`. 
+
+##### With Arguments
+
+To supply arguments, a comma separated list is used.  A comma is used by default, but any separator may be configured, and the separator may be escaped using a backslash `\`. 
+
+For example `${%someKey arg0,arg 1 with space,arg 2 \, with comma}`
+
+##### With Nested Variables
+
+An argument can also be a nested variable that is available in the same scope as the replacement. 
+
+Fixed text arguments and variables can be mixed in an I18N expression. However, you *cannot* currently mix text and variables in the same argument, for example `${%someKey prefix${var}suffix}` will *not* work.
+
+For example `${%someKey arg0,${var1},${var2}`
+
+#### In Code
+
+An alternative way to do parameterised i18n messages is in the model. This is particular useful when the calculation of the message is complex or inconvenient to express as either simple strings in the template, or as argument variables.
+
+In this case, you use the variable pattern `${someName}` instead of the I18n syntext with the `%` prefix.
+
+```java
+
+var model = TemplateModel.ofContent(
+	"""
+	<p>${someI18NVariable}</p>
+	<small>${someOtherI18NVariable}</small>
+	""").
+	i18n("someI18NVariable", "keyInBundle").
+	i18n("someOtherI18NVariable", "keyInBundleWithArgs", "arg0", "arg1").
+	bundle(MyClass.class);
+```
+
+And the bundle ..
+
+```
+keyInBundle=Some internationalised text
+keyInBundleWithARgs=Some internationalised text {0} {1}
+```
+
+As with most `TemplateModel` attributes, you can defer calculation of the template text by supplying the appropriate `Supplier<..>` instead of a direct object reference.
+
 ### Tags
 
 TinyTemplates primary use is with HTML and fragments of HTML. Tags by default use an *XML* syntax so as to
@@ -343,7 +410,7 @@ var model = TemplateModel.ofContent(html).
 
 ```
 
-Lists make some default variables to each row. 
+Lists make some default variables available to each row. 
 
  * `_size`, the size of the list.
  * `_index`, the zero-based index of the current row.

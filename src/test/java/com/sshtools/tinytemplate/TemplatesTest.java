@@ -163,10 +163,13 @@ public class TemplatesTest {
 	public void testExpandI18N() {
 		var exp = new VariableExpander.Builder().
 				withBundles(ResourceBundle.getBundle(TemplatesTest.class.getName())).
+				fromSimpleMap(createVars()).
 				build();
 		
 		assertEquals("Some localised key", exp.expand("%someKey"));
 		assertEquals("%someMissingKey", exp.expand("%someMissingKey"));
+		assertEquals("Some key with args arg0 arg1 arg2", exp.expand("%someKeyWithArgs arg0,arg1,arg2"));
+		assertEquals("Some key with args 27 arg1 Some name", exp.expand("%someKeyWithArgs ${AGE},arg1,${NAME}"));
 	}
 	
 	@Test
@@ -1353,7 +1356,70 @@ public class TemplatesTest {
 	}
 	
 	@Test
-	public void testTemplateFlaseConditionInObjectInTrueCondition() {
+	public void testTemplateI18N() {
+		Assertions.assertEquals("""
+				<p>Some text</p>
+				<p>Some localised key</p>
+				<p>Some other text</p>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<p>Some text</p>
+				<p>${%someKey}</p>
+				<p>Some other text</p>
+				 	 """).bundle(TemplatesTest.class)
+				));
+		
+	}
+	
+	@Test
+	public void testTemplateI18NArgs() {
+		Assertions.assertEquals("""
+				<p>Some text</p>
+				<p>Some key with args arg0 arg1 arg2</p>
+				<p>Some other text</p>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<p>Some text</p>
+				<p>${%someKeyWithArgs arg0,arg1,arg2}</p>
+				<p>Some other text</p>
+				 	 """).bundle(TemplatesTest.class)
+				));
+	}
+	
+	@Test
+	public void testTemplateI18NArgsAndEscapes() {
+		Assertions.assertEquals("""
+				<p>Some text</p>
+				<p>Some key with args arg0,\\ arg1 arg2</p>
+				<p>Some other text</p>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<p>Some text</p>
+				<p>${%someKeyWithArgs arg0\\\\,\\\\\\\\,arg1,arg2}</p>
+				<p>Some other text</p>
+				 	 """).bundle(TemplatesTest.class)
+				));
+	}
+	
+	@Test
+	public void testTemplateI18NVars() {
+		Assertions.assertEquals("""
+				<p>Some text</p>
+				<p>Some key with args arg0 VAL1 VAL2</p>
+				<p>Some other text</p>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<p>Some text</p>
+				<p>${%someKeyWithArgs arg0,${VAR1},${VAR2}}</p>
+				<p>Some other text</p>
+				 	 """).bundle(TemplatesTest.class).
+						variable("VAR1", "VAL1").
+						variable("VAR2", "VAL2")
+				));
+	}
+	
+	@Test
+	public void testTemplateFalseConditionInObjectInTrueCondition() {
 		Assertions.assertEquals("""
 				<p>Some text</p>
 
