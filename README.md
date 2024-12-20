@@ -264,9 +264,7 @@ As with most `TemplateModel` attributes, you can defer calculation of the templa
 
 ### Tags
 
-TinyTemplates primary use is with HTML and fragments of HTML. Tags by default use an *XML* syntax so as to
-work well with code editors. Each tag starts with `t:`, so we suggest that you start all documents 
-with the following header .. 
+TinyTemplates primary use is with HTML and fragments of HTML. Tags by default use an *XML* syntax so as to work well with code editors. Each tag starts with `t:`, so we suggest that you start all documents with the following header .. 
 
 ```html
 <html lang="en" xmlns:t="https://jadaptive.com/t">
@@ -279,16 +277,22 @@ with the following header ..
 <t:instruct reset/>
 ```   
 
-In both cases, the first line introduces the `t` namespace, so subsequent tags that appear in your
-document will not be marked as syntax errors by your editor.
+In both cases, the first line introduces the `t` namespace, so subsequent tags that appear in your document will not be marked as syntax errors by your editor.
 
-The 2nd line used with fragments, will cause TinyTemplate to reset it's buffer, and forget any output
-so far collected. In effect, it will remove the first line. 
+The 2nd line used with fragments, will cause TinyTemplate to reset it's buffer, and forget any output so far collected. In effect, it will remove the first line. 
+
+Depend on your editor, you may also need to complete the fragment with a closing `<html>` tag.
+
+```html
+<t:instruct end/>
+</html>
+```
+
+This will prevent the template processor from writing any further output within that template, and so that closing tag will not appear in the processed HTML.
 
 #### If / Else
 
-Allows conditional inclusion of one or two blocks on content. Every condition in the template is
-assigned a *name*, which will be tied to a piece of Java code which produces whether it evaluates to
+Allows conditional inclusion of one or two blocks on content. Every condition in the template is assigned a *name*, which will be tied to a piece of Java code which produces whether it evaluates to
 `true`.
 
 ```html
@@ -368,7 +372,7 @@ Includes allows templates to be nested. When a `<t:include my_include/>` tag is 
 
 The include tag would be a key tool if you were to use TinyTemplate to compose pages of lots of smaller parts. 
 
-*An include must be completely self contained. It no direct access to the template it is contained within. Like any other template, all variables (and potentially further nested includes) must be provided specifically to it.*
+*An include must be completely self contained. It has no direct access to the template it is contained within. Like any other template, all variables (and potentially further nested includes) must be provided specifically to it.*
 
 **main.html**
 
@@ -395,7 +399,7 @@ The include tag would be a key tool if you were to use TinyTemplate to compose p
 </html>
 ```
 
-*Note, the use of `<t:instruct reset/>` and `<t:instruct end/>`. This is not strictly required, it is to help your IDE cope with fragments of HTML with custom tags. See above. *
+*Note, the use of `<t:instruct reset/>` and `<t:instruct end/>`. This is not strictly required, it is to help your IDE cope with fragments of HTML with custom tags. See above.*
 
 **Main.java**
 
@@ -484,8 +488,16 @@ And some conditions.
 
 #### Object
 
-TODO
+The object tag provides scope to a block a template text. The primary use for this would be to allow the same variable name to be used in more than one place in the current template, making it practical to create reusable `TemplateModel` instances, that for example map to a particular Java object. You can of course do this with the `<t:include>` tag, but `<t:object>` does not require a separate template resource.
+
+Unlike `<t:include>`, it also inherits variables and conditions that exist in it's parent template. Any variables or conditions used, if they do not exist in the objects `TemplateModel`, the parent model will also be queried.
 
 #### Instruct
 
-TODO
+Instructions are generic commands that can be sent to either the `TemplateProcessor` or some user code.
+
+Built-in instructions currently consists of `<t:instruct reset/>` and `<t:instruct end/>` that you have seen elsewhere in this document.
+
+Currently, user supplied instructions may not alter the template or the processors behaviour in any way. So, they can only be used to supply additional functions that affect the template as whole. This makes their use limited.
+
+In the future, a richer API to create custom tags and processing may be provided.
