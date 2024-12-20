@@ -364,7 +364,66 @@ if(me != null) {
 
 #### Include
 
-TODO
+Includes allows templates to be nested. When a `<t:include my_include/>` tag is encountered in the template, a corresponding `my_include` is looked up in the current `TemplateModel`. This include itself, is a new `TemplateModel`, with it's own content (derived from a `String`, a resource, `Path` or whatever) as any other template.
+
+The include tag would be a key tool if you were to use TinyTemplate to compose pages of lots of smaller parts. 
+
+*An include must be completely self contained. It no direct access to the template it is contained within. Like any other template, all variables (and potentially further nested includes) must be provided specifically to it.*
+
+**main.html**
+
+```html
+<html lang="en" xmlns:t="https://jadaptive.com/t">
+<body>
+	<t:include nav_menu/>
+	<p>My Main Content</p>
+</body>
+</html>	
+```
+
+**menu.frag.html**
+
+```html
+<html lang="en" xmlns:t="https://jadaptive.com/t">
+<t:instruct reset/>
+<ul>
+	<t:list menu>
+		<li><a href="${href}">${action}</a></li>
+	</t>
+<ul>
+<t:instruct end/>
+</html>
+```
+
+*Note, the use of `<t:instruct reset/>` and `<t:instruct end/>`. This is not strictly required, it is to help your IDE cope with fragments of HTML with custom tags. See above. *
+
+**Main.java**
+
+```java
+
+
+public record Anchor(String href, String text) {}
+
+// ...
+
+var links = Set.of(
+	new Anchor("file.html", "File"),
+	new Anchor("edit.html", "Edit"),
+	new Anchor("view.html", "View"),
+	new Anchor("help.html", "Help")
+);
+
+var model = TemplateModel.ofResource(Main.class, "main.html").
+ 	model.object("nav_menu", content -> 
+		TemplateModel.ofResource(Main.class, "menu.frag.html").
+			list("menu", (content) ->
+				links.stream().map(anchor -> TemplateModel.ofContent(content).
+					variable("href", anchor::href).
+					variable("text", anchor::text)
+				).toList()
+			)
+    );
+```
 
 #### List
 
