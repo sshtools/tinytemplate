@@ -826,6 +826,7 @@ public class Templates {
 			State state = State.START;
 			boolean match = true;
 			boolean capture = false;
+			boolean write = true;
 			int nestDepth = 0;
 			String var;
 			int braceDepth = 0;
@@ -841,6 +842,15 @@ public class Templates {
 				this.expander = expander;
 				this.reader = reader;
 				this.scope = scope;
+			}
+			void append(char ch) {
+				if(write)
+					out.append(ch);
+			}
+			
+			void append(String str) {
+				if(write)
+					out.append(str);
 			}
 			
 			int depth() {
@@ -1147,7 +1157,7 @@ public class Templates {
 
 		private void expandToBuffer(Block block, StringBuilder buf) {
 			IllegalArgumentException exception = null;
-			StringBuilder oblock = block.out;
+			var oblock = block;
 			var varStr = buf.toString();
 			varStr = varStr.substring(2, varStr.length() - 1);
 			while(block != null) {
@@ -1168,6 +1178,9 @@ public class Templates {
 			logger.ifPresent(l -> l.debug("Processing instruction ''{0}''", instruction));
 			if(instruction.equals("reset")) {
 				block.out.setLength(0);
+			}
+			else if(instruction.equals("end")) {
+				block.write = false;
 			}
 			else {
 				block.model.instruction.ifPresent(ip -> ip.accept(instruction));
@@ -1214,7 +1227,7 @@ public class Templates {
 				
 				read(ifBlock);
 				
-				block.out.append(ifBlock.out.toString());
+				block.append(ifBlock.out.toString());
 				ifBlock.out.setLength(0);
 				block.state = State.START;
 				
@@ -1233,7 +1246,7 @@ public class Templates {
 					var incBlock = new Block(block, include,getExpanderForModel(include), include.text(true));
 					logger.ifPresent(l -> l.debug(formatDebug(incBlock, "** Including template {0} **"), var));
 					read(incBlock);
-					block.out.append(incBlock.out.toString());
+					block.append(incBlock.out.toString());
 					block.state = State.START;
 					return true;
 				}
@@ -1259,7 +1272,7 @@ public class Templates {
 						templ.parent = Optional.of(block.model);
 						var listBlock = new Block(block, templ,getExpanderForModel(templ), templ.text(true), "object", true);
 						read(listBlock);				
-						block.out.append(listBlock.out.toString());	
+						block.append(listBlock.out.toString());	
 					}
 					finally {
 						templ.parent = was;
@@ -1300,7 +1313,7 @@ public class Templates {
 							templ.condition("_last", index == templates.size() - 1);
 							var listBlock = new Block(block, templ,getExpanderForModel(templ), templ.text(true));
 							read(listBlock);									
-							block.out.append(listBlock.out.toString());
+							block.append(listBlock.out.toString());
 						}
 						finally {
 							templ.parent = was;
@@ -1355,12 +1368,12 @@ public class Templates {
 			if (buf.length() > 0) {
 				if(block.match) {
 					buf.append(ch);
-					block.out.append(buf.toString());
+					block.append(buf.toString());
 				}
 				buf.setLength(0);
 			} else {
 				if(block.match) {
-					block.out.append(ch);
+					block.append(ch);
 				}
 			}
 		}
