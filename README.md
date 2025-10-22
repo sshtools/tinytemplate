@@ -43,7 +43,7 @@ Add the library to your project.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>tinytemplate</artifactId>
-    <version>0.9.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 

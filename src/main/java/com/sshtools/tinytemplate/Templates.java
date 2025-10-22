@@ -202,7 +202,7 @@ public class Templates {
 		}
 
 		public String expand(String input) {
-			logger.ifPresent(l -> l.debug("Expanding ''{0}''", input));
+			logger.ifPresent(l -> l.debug("Expanding `{0}`", input));
 
 			var mtchr = exprPattern.matcher(input);
 			if (mtchr.find()) {
@@ -255,7 +255,7 @@ public class Templates {
 								}
 							} else {
 								logger.ifPresent(l -> l.warning(
-										"Invalid variable syntax ''{0}'' in variable expression. Expected true value and false value separated by '':'', not ''{1}''",
+										"Invalid variable syntax `{0}` in variable expression. Expected true value and false value separated by '':'', not `{1}`",
 										input, word));
 							}
 						} else if (op.equals("-")) {
@@ -296,7 +296,7 @@ public class Templates {
 							}
 						} else {
 							logger.ifPresent(l -> l.warning(
-									"Invalid variable syntax ''{0}'' in variable expression. Unexpected option character ''{1}''",
+									"Invalid variable syntax `{0}` in variable expression. Unexpected option character `{1}`",
 									input, op));
 						}
 					} else {
@@ -304,7 +304,7 @@ public class Templates {
 					}
 				}
 			} else {
-				logger.ifPresent(l -> l.warning("Invalid variable syntax ''{0}'' in variable expression.'", input));
+				logger.ifPresent(l -> l.warning("Invalid variable syntax `{0}` in variable expression.'", input));
 			}
 
 			return input;
@@ -337,7 +337,7 @@ public class Templates {
 			var val = variableSupplier.apply(param);
 			if (missingThrowsException && val == null)
 				throw new IllegalArgumentException(
-						MessageFormat.format("Required variable ''{0}'' is missing", param));
+						MessageFormat.format("Required variable `{0}` is missing", param));
 			return val;
 		}
 
@@ -1175,7 +1175,7 @@ public class Templates {
 		}
 		
 		private void instruction(Block block, String instruction) {
-			logger.ifPresent(l -> l.debug("Processing instruction ''{0}''", instruction));
+			logger.ifPresent(l -> l.debug("Processing instruction `{0}`", instruction));
 			if(instruction.equals("reset")) {
 				block.out.setLength(0);
 			}
