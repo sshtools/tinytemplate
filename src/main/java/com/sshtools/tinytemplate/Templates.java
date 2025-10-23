@@ -955,6 +955,7 @@ public class Templates {
 							block.braceDepth++;
 							buf.append(ch);
 						} else {
+							block.state = State.START;
 							flushBuf(ch, buf, block);
 						}
 						break;
@@ -1250,6 +1251,15 @@ public class Templates {
 					block.state = State.START;
 					return true;
 				}
+			}
+			else if(dir.equals("t:ignore")) {
+				var templBlock = new Block(block, block.model,block.expander, block.reader, "ignore", true);
+				templBlock.capture = true;
+				templBlock.nestDepth = 1;
+				read(templBlock);		
+				block.append(templBlock.out.toString());							
+				block.state = State.START;
+				return true;
 			}
 			else if(dir.equals("t:object")) {
 				var templateSupplier = block.model.templates.get(var);

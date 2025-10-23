@@ -26,7 +26,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.sshtools</groupId>
     <artifactId>tinytemplate</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
     <name>TinyTemplate</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

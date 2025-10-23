@@ -13,7 +13,7 @@ A lightweight Java string template engine. While it is intended to be used with 
 will work with any text content. While small, it has some unique features and is fast and 
 flexible.
 
-It requires just 6 HTML-like tags, and a bash-like variable expression syntax.
+It requires just 7 HTML-like tags, and a bash-like variable expression syntax.
 
 ## Status
 
@@ -24,7 +24,7 @@ Feature complete. Just some test coverage to complete and more documentation.
  * No dependencies, JPMS compliant, Graal Native Image friendly
  * Fast. See Design Choices.
  * Simple Java. Public API consists of just 2 main classes, `TemplateModel` and `TemplateProcessor`.
- * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>`, `<t:object>`, `<t:list>` and `<t:instruct/>`. Bash like variable such as `${myVar}`.
+ * Simple Content. Just `<t:if>` (and `<t:else>`), `<t:include>`, `<t:object>`, `<t:list>`, `<t:instruct/>` and `<t:ignore>`. Bash like variable such as `${myVar}`.
  * Internationalisation features.  
  
 ## Design Choices
@@ -43,7 +43,7 @@ Add the library to your project.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>tinytemplate</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -501,3 +501,18 @@ Built-in instructions currently consists of `<t:instruct reset/>` and `<t:instru
 Currently, user supplied instructions may not alter the template or the processors behaviour in any way. So, they can only be used to supply additional functions that affect the template as whole. This makes their use limited.
 
 In the future, a richer API to create custom tags and processing may be provided.
+
+#### Ignore
+
+Any content  wrapped in an `<t:ignore>` and `</t:ignore>` will not have its content processed.
+
+This might be useful around script tags. For example.
+
+```html
+<p>Some content</p>
+<script>
+<t:ignore>
+console.log("This ${variablePattern} won't get processed");
+</t:ignore>
+</script>
+```

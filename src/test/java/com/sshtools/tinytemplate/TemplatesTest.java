@@ -139,12 +139,12 @@ public class TemplatesTest {
 		exp.expand("NAME:_SOMETHING");
 		
 		
-		assertEquals("DEBUG: Expanding 'Z:/X'", out.get(0));
-		assertEquals("WARN: Invalid variable syntax 'Z:/X' in variable expression.", out.get(1));
-		assertEquals("DEBUG: Expanding 'NAME:?SOMETHING'", out.get(2));
-		assertEquals("WARN: Invalid variable syntax 'NAME:?SOMETHING' in variable expression. Expected true value and false value separated by ':', not 'SOMETHING'", out.get(3));
-		assertEquals("DEBUG: Expanding 'NAME:_SOMETHING'", out.get(4));
-		assertEquals("WARN: Invalid variable syntax 'NAME:_SOMETHING' in variable expression. Unexpected option character ''", out.get(5));
+		assertEquals("DEBUG: Expanding `Z:/X`", out.get(0));
+		assertEquals("WARN: Invalid variable syntax `Z:/X` in variable expression.", out.get(1));
+		assertEquals("DEBUG: Expanding `NAME:?SOMETHING`", out.get(2));
+		assertEquals("WARN: Invalid variable syntax `NAME:?SOMETHING` in variable expression. Expected true value and false value separated by ':', not `SOMETHING`", out.get(3));
+		assertEquals("DEBUG: Expanding `NAME:_SOMETHING`", out.get(4));
+		assertEquals("WARN: Invalid variable syntax `NAME:_SOMETHING` in variable expression. Unexpected option character ``", out.get(5));
 	}
 	
 	@Test
@@ -203,7 +203,7 @@ public class TemplatesTest {
 		assertEquals("null", exp.expand("NOT_HERE:-${__MISSING__}"));
 	}
 	
-		@Test
+	@Test
 	public void testTemplateSimpleVariables() {
 		Assertions.assertEquals("""
 				<html>
@@ -217,6 +217,74 @@ public class TemplatesTest {
 				<body>
 				<p>Variable var: ${NAME}. And var2: <i>${DESCRIPTION}</i></p> 
 				</body>
+				</html>
+				 	 """).
+					variable("NAME", "Some name").
+					variable("DESCRIPTION", "Some description")));
+		
+	}
+
+	
+	@Test
+	public void testIgnoreScript() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				<p>Variable var: Some name. And var2: <i>Some description</i></p>
+				</body>
+				
+				<script>
+				console.log("This ${NAME} won't get processed");
+				</script>
+				
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<p>Variable var: ${NAME}. And var2: <i>${DESCRIPTION}</i></p> 
+				</body>
+				<t:ignore>
+				<script>
+				console.log("This ${NAME} won't get processed");
+				</script>
+				</t:ignore>
+				</html>
+				 	 """).
+					variable("NAME", "Some name").
+					variable("DESCRIPTION", "Some description")));
+	}
+	
+	@Test
+	public void testVarPatternInScript() {
+		Assertions.assertEquals("""
+				<html>
+				<body>
+				<p>Variable var: Some name. And var2: <i>Some description</i></p>
+				</body>
+				<script>
+				var a = $("X");
+				console.log("XXX");
+				if(a > b) {
+					console.log("Stuff");
+				}
+				var b = $("X");
+				</script>
+				</html>
+				""", 
+				createParser().process(TemplateModel.ofContent("""
+				<html>
+				<body>
+				<p>Variable var: ${NAME}. And var2: <i>${DESCRIPTION}</i></p> 
+				</body>
+				<script>
+				var a = $("X");
+				console.log("XXX");
+				if(a > b) {
+					console.log("Stuff");
+				}
+				var b = $("X");
+				</script>
 				</html>
 				 	 """).
 					variable("NAME", "Some name").
